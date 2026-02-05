@@ -8,7 +8,8 @@ import re
 import sys
 import time
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))))
 
 from pathlib import Path
 from urllib.parse import urljoin

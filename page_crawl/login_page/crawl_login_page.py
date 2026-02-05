@@ -4,7 +4,8 @@
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))))
 
 from utils.config_handler import driver_conf, bbs_conf, load_crawled_config, save_crawled_config
 

@@ -1,0 +1,24 @@
+{
+  "description": "北邮人论坛页面跳转逻辑，所有版面翻页与点开帖子逻辑一致",
+  "base_url": "https://bbs.byr.cn",
+  "boards_source": "board.json",
+  "pagination": {
+    "description": "版面列表翻页逻辑",
+    "home_pattern": "https://bbs.byr.cn/#!board/{board_name}",
+    "home_with_p1": "https://bbs.byr.cn/#!board/{board_name}?p=1",
+    "page_pattern": "https://bbs.byr.cn/#!board/{board_name}?p={page}",
+    "params": {
+      "board_name": "版面英文名，来自 board.json 中各 board 的 url 最后一段（如 Advice、IWhisper、Clothing）",
+      "page": "页码，从 1 开始；不传或 p=1 均为首页"
+    }
+  },
+  "article": {
+    "description": "点开帖子逻辑：由版面页进入帖子详情",
+    "pattern": "https://bbs.byr.cn/#!article/{board_name}/{post_id}",
+    "params": {
+      "board_name": "版面英文名，与版面 URL 中一致",
+      "post_id": "帖子 ID，来自版面列表爬取结果中每条帖子的 url 末尾数字（如 /article/IWhisper/8726418 中的 8726418）"
+    },
+    "example": "https://bbs.byr.cn/#!article/Clothing/45334"
+  }
+}
