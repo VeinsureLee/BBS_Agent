@@ -1,9 +1,12 @@
 """
-爬取登录页面，自动检测账号、密码输入框和登录按钮的 id，并保存到 config 文件。
+爬取登录页面，自动检测账号、密码输入框和登录按钮的 id，并保存到 config/crawled 的 JSON 配置。
 """
-import json
 import os
-from pathlib import Path
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.config_handler import driver_conf, bbs_conf, load_crawled_config, save_crawled_config
 
 from dotenv import load_dotenv
 from selenium import webdriver
@@ -13,12 +16,10 @@ from selenium.webdriver.common.by import By
 
 load_dotenv()
 
-# 从环境变量读取配置
-Chrome_Path = os.environ.get("Chrome_Path")
-Chrome_Driver_Path = os.environ.get("Chrome_Driver_Path")
-BBS_Url = os.environ.get("BBS_Url")
-
-CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+# 从 config/local/*.json 读取
+Chrome_Path = driver_conf.get("Chrome_Path")
+Chrome_Driver_Path = driver_conf.get("Chrome_Driver_Path")
+BBS_Url = bbs_conf.get("BBS_Url")
 
 
 def get_or_fallback_id(element) -> str:
@@ -110,26 +111,6 @@ def crawl_login_page(url: str) -> dict:
         driver.quit()
 
 
-def load_config() -> dict:
-    """读取已有 config，不存在则返回空字典。"""
-    if not CONFIG_PATH.exists():
-        return {}
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {}
-
-
-def save_config(new_values: dict) -> None:
-    """将新配置与已有 config 合并后写入（若已有则更新）。"""
-    config = load_config()
-    config.update(new_values)
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(config, f, ensure_ascii=False, indent=2)
-    print(f"配置已保存到: {CONFIG_PATH}")
-
-
 def main():
     url = (BBS_Url or "").strip()
     if not url:
@@ -139,7 +120,7 @@ def main():
     print(f"正在打开登录页: {url}")
     result = crawl_login_page(url)
     print("检测结果:", result)
-    save_config(result)
+    save_crawled_config(result)
     print("完成。")
 
 

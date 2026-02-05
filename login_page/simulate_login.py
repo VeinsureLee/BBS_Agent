@@ -1,11 +1,15 @@
 """
-根据 .env 中的账号密码和 config.json 中的元素 id，模拟登录并将登录后的页面保存为 HTML 文件。
+根据 .env 中的账号密码和 config/crawled 中的登录页元素 id，模拟登录并将登录后的页面保存为 HTML 文件。
 """
-import json
 import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import time
 from pathlib import Path
 
+from utils.config_handler import driver_conf, bbs_conf, load_crawled_config, get_crawled_config_path
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -14,26 +18,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
 load_dotenv()
 
-# 环境变量
-Chrome_Path = os.environ.get("Chrome_Path")
-Chrome_Driver_Path = os.environ.get("Chrome_Driver_Path")
+# 从 config/local/*.json 读取
+Chrome_Path = driver_conf.get("Chrome_Path")
+Chrome_Driver_Path = driver_conf.get("Chrome_Driver_Path")
+BBS_Url = bbs_conf.get("BBS_Url")
+
+# .env 读取账号密码
 BBS_Name = os.environ.get("BBS_Name")
 BBS_Password = os.environ.get("BBS_Password")
 
-# 路径：与 crawl_login_page 同目录
 SCRIPT_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = SCRIPT_DIR / "config.json"
 DEFAULT_HTML_PATH = SCRIPT_DIR / "logged_in_page.html"
-
-
-def load_config() -> dict:
-    """读取 config.json。"""
-    if not CONFIG_PATH.exists():
-        raise FileNotFoundError(f"未找到配置文件: {CONFIG_PATH}，请先运行 crawl_login_page.py")
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def create_driver():
@@ -54,16 +52,18 @@ def simulate_login(*, html_path: str | Path | None = None) -> str:
     if not BBS_Name or not BBS_Password:
         raise ValueError("请在 .env 中设置 BBS_Name 和 BBS_Password")
 
-    config = load_config()
+    config = load_crawled_config()
+    if not config:
+        raise FileNotFoundError(f"未找到配置文件: {get_crawled_config_path()}，请先运行 crawl_login_page.py")
     url = config.get("login_page_url") or os.environ.get("BBS_Url") or ""
     if not url.strip():
-        raise ValueError("未配置登录页地址，请在 config.json 或 .env 中设置 login_page_url / BBS_Url")
+        raise ValueError("未配置登录页地址，请在 config/crawled 配置文件或 .env 中设置 login_page_url / BBS_Url")
 
     username_id = (config.get("username_input_id") or "").strip()
     password_id = (config.get("password_input_id") or "").strip()
     login_btn_id = (config.get("login_button_id") or "").strip()
     if not username_id or not password_id or not login_btn_id:
-        raise ValueError("config.json 中缺少 username_input_id / password_input_id / login_button_id，请先运行 crawl_login_page.py")
+        raise ValueError("config/crawled 配置中缺少 username_input_id / password_input_id / login_button_id，请先运行 crawl_login_page.py")
 
     save_path = Path(html_path) if html_path else DEFAULT_HTML_PATH
     save_path = save_path.resolve()
