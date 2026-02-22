@@ -2,7 +2,7 @@
 根据 config/crawled/board.json 中的版面信息，请求对应版面页面并解析帖子列表，
 只保留当日发帖，保存到 data/讨论区名称/版面名称/年月日.json（时间仅含年月日）。
 
-北邮人论坛需登录后才能看到版面帖子列表，默认使用 Selenium 登录后获取页面。
+北邮人论坛需登录后才能看到版面帖子列表，默认使用 Playwright 登录后获取页面。
 debug 模式（环境变量 DEBUG=1 或参数 debug=True）时打开浏览器窗口，否则无头不弹窗。
 """
 import json
@@ -80,24 +80,19 @@ def _is_debug_mode() -> bool:
     return v in ("1", "true", "yes")
 
 
-def _fetch_board_html_selenium(
+def _fetch_board_html_playwright(
     request_url: str,
     wait_seconds: float = 2.0,
     debug: bool | None = None,
 ) -> str | None:
     """
-    使用 Selenium 登录北邮人论坛后访问版面 URL，返回页面 HTML。
+    使用 Playwright 登录北邮人论坛后访问版面 URL，返回页面 HTML。
     debug 为 True 时打开浏览器窗口，否则无头模式不弹出窗口；未传时根据环境变量 DEBUG 判断。
     成功返回 HTML 字符串，失败返回 None。
     """
     try:
         from dotenv import load_dotenv
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-        from selenium.webdriver.chrome.service import Service
-        from selenium.webdriver.common.by import By
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
+        from playwright.sync_api import sync_playwright
 
         from utils.config_handler import driver_conf, bbs_conf, load_crawled_config
 
@@ -117,43 +112,30 @@ def _fetch_board_html_selenium(
             return None
 
         Chrome_Path = driver_conf.get("Chrome_Path")
-        Chrome_Driver_Path = driver_conf.get("Chrome_Driver_Path")
-        options = Options()
+        launch_options = {}
         if Chrome_Path:
-            options.binary_location = Chrome_Path
-        # debug 模式下显示浏览器，否则无头模式不弹出窗口
-        if debug if debug is not None else _is_debug_mode():
-            pass  # 不添加 headless，弹出浏览器窗口
-        else:
-            options.add_argument("--headless")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-        service = Service(Chrome_Driver_Path) if Chrome_Driver_Path else None
-        driver = webdriver.Chrome(service=service, options=options)
+            launch_options["executable_path"] = Chrome_Path
+        headless = not (debug if debug is not None else _is_debug_mode())
+        launch_options["headless"] = headless
 
-        try:
-            driver.get(login_url)
-            wait = WebDriverWait(driver, 10)
-            wait.until(EC.presence_of_element_located((By.ID, username_id)))
-            driver.find_element(By.ID, username_id).clear()
-            driver.find_element(By.ID, username_id).send_keys(BBS_Name)
-            driver.find_element(By.ID, password_id).clear()
-            driver.find_element(By.ID, password_id).send_keys(BBS_Password)
-            driver.find_element(By.ID, login_btn_id).click()
-            time.sleep(3)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(**launch_options)
             try:
-                WebDriverWait(driver, 15).until(
-                    lambda d: "login" not in (d.current_url or "").lower()
-                )
-            except Exception:
-                pass
-            time.sleep(1)
-            driver.get(request_url)
-            time.sleep(wait_seconds)
-            return driver.page_source
-        finally:
-            driver.quit()
+                page = browser.new_page()
+                page.goto(login_url, wait_until="domcontentloaded")
+                page.wait_for_selector(f"#{username_id}", state="visible", timeout=10000)
+                page.locator(f"#{username_id}").fill("")
+                page.locator(f"#{username_id}").fill(BBS_Name)
+                page.locator(f"#{password_id}").fill("")
+                page.locator(f"#{password_id}").fill(BBS_Password)
+                page.locator(f"#{login_btn_id}").click()
+                page.wait_for_url(lambda u: "login" not in u.lower(), timeout=15000)
+                time.sleep(max(0, wait_seconds - 1))
+                page.goto(request_url, wait_until="domcontentloaded")
+                time.sleep(wait_seconds)
+                return page.content()
+            finally:
+                browser.close()
     except Exception:
         return None
 
@@ -255,10 +237,10 @@ def crawl_board_posts(
     根据版面名称（name）从 board.json 解析出对应 URL，请求该版面文章列表页，
     只保留当日发帖，保存到 data/讨论区名称/版面名称/年月日.json。
 
-    debug 为 True 或环境变量 DEBUG=1 时 Selenium 会打开浏览器窗口，否则无头不弹窗。
+    debug 为 True 或环境变量 DEBUG=1 时 Playwright 会打开浏览器窗口，否则无头不弹窗。
 
     :param board_name: 版面名称，与 board.json 中 boards[].name 一致（如 "悄悄话"）
-    :param use_selenium: 是否用 Selenium 登录后获取页面（默认 True）
+    :param use_selenium: 是否用 Playwright 登录后获取页面（默认 True）
     :param debug: 是否 debug 模式（打开浏览器）；None 时根据环境变量 DEBUG 判断
     :param headers: 可选请求头，use_selenium=False 时生效
     :param timeout: 请求超时秒数，use_selenium=False 时生效
@@ -275,7 +257,7 @@ def crawl_board_posts(
 
     html = None
     if use_selenium:
-        html = _fetch_board_html_selenium(request_url, debug=debug)
+        html = _fetch_board_html_playwright(request_url, debug=debug)
     else:
         req_headers = {**DEFAULT_HEADERS, **(headers or {})}
         try:
@@ -316,9 +298,12 @@ def crawl_board_posts(
 
 
 if __name__ == "__main__":
+    print("test")
+    start_time = time.time()
     # 示例：爬取「悄悄话」版面；设置 DEBUG=1 或 debug=True 可弹出浏览器
     name = "悄悄话"
     posts, path = crawl_board_posts(name)  # debug=True 可打开浏览器
     print(f"版面: {name}, 当日帖子数: {len(posts)}, 保存: {path}")
     if posts:
         print("首条:", json.dumps(posts[0], ensure_ascii=False))
+    print(f"time: {time.time() - start_time}")
