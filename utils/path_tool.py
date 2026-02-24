@@ -33,4 +33,5 @@ def get_abs_path(relative_path: str) -> str:
 
 
 if __name__ == '__main__':
-    print(get_project_root("config/config.txt"))
+    print(get_project_root())
+    print(get_abs_path("config/local/driver.json"))
