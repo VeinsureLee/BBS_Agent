@@ -1,4 +1,4 @@
-{   
+{
     "description": "Chroma配置",
     "collection_name": "bbs_knowledge_base",
     "persist_directory": "chroma_db",
@@ -7,9 +7,9 @@
     "md5_hex_store": "md5.text",
     "allow_knowledge_file_type": [
         "txt",
-        "pdf"
+        "pdf",
+        "json"
     ],
-
     "chunk_size": 200,
     "chunk_overlap": 20,
     "separators": [
