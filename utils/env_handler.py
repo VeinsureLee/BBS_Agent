@@ -56,6 +56,11 @@ def get_bbs_credentials() -> tuple[str, str]:
     return get_env("BBS_Name"), get_env("BBS_Password")
 
 
+def get_api_key() -> str:
+    """从环境变量读取 DASHSCOPE_API_KEY。"""
+    load_env()
+    return get_env("DASHSCOPE_API_KEY")
+
 if __name__ == "__main__":
     # 调试：加载 .env 并打印常用环境变量
     load_env()
@@ -65,3 +70,4 @@ if __name__ == "__main__":
     print("BBS_Password:", pwd or "(未设置)")
     print("get_env('DEBUG', '0'):", get_env("DEBUG", "0"))
     print("get_bool_env('DEBUG'):", get_bool_env("DEBUG"))
+    print("DASHSCOPE_API_KEY:", get_api_key() or "(未设置)")

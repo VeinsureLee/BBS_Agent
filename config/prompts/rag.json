@@ -1,1 +1,5 @@
-{}
+{
+    "description": "RAG模型配置",
+    "chat_model_name": "qwen3-max",
+    "embedding_model_name": "text-embedding-v4"
+}

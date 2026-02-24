@@ -43,6 +43,24 @@ def get_crawled_config_path(path: str = "config/crawled/config.json") -> Path:
     return Path(get_abs_path(path))
 
 
+def get_rag_config_path(path: str = "config/prompts/rag.json") -> Path:
+    return Path(get_abs_path(path))
+
+
+def load_rag_config(path: str = "config/prompts/rag.json", encoding: str = "utf-8") -> dict:
+    path = get_rag_config_path(path)
+    return _load_json(str(path), encoding)
+
+
+def get_chroma_config_path(path: str = "config/local/chroma.json") -> Path:
+    return Path(get_abs_path(path))
+
+
+def load_chroma_config(path: str = "config/local/chroma.json", encoding: str = "utf-8") -> dict:
+    path = get_chroma_config_path(path)
+    return _load_json(str(path), encoding)
+
+
 def load_crawled_config(path: str = "config/crawled/config.json", encoding: str = "utf-8") -> dict:
     """读取爬取配置（登录页 url、username_input_id、password_input_id、login_button_id 等）。"""
     path = get_crawled_config_path(path)
@@ -64,6 +82,8 @@ def save_crawled_config(new_values: dict, path: str = "config/crawled/config.jso
 driver_conf = load_driver_config()
 bbs_conf = load_bbs_config()
 prompts_conf = load_prompts_config()
+rag_conf = load_rag_config()
+chroma_conf = load_chroma_config()
 
 
 if __name__ == "__main__":
@@ -72,3 +92,5 @@ if __name__ == "__main__":
     print(bbs_conf.get("BBS_Url"))
     print("crawled path:", get_crawled_config_path())
     print("crawled config:", load_crawled_config())
+    print("rag config:", rag_conf)
+    print("chroma config:", chroma_conf)
