@@ -1,10 +1,10 @@
 {
     "description": "Chroma配置",
     "collection_name": "bbs_knowledge_base",
-    "persist_directory": "chroma_db",
+    "persist_directory": "vector_db/chroma_db",
     "k": 10,
     "data_path": "data",
-    "md5_hex_store": "md5.text",
+    "md5_hex_store": "vector_db/md5.text",
     "allow_knowledge_file_type": [
         "txt",
         "pdf",

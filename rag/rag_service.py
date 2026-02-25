@@ -15,10 +15,15 @@ from langchain_core.prompts import PromptTemplate
 from model.factory import chat_model
 
 
+def _is_debug():
+    return os.environ.get("DEBUG", "").lower() in ("1", "true", "yes")
+
+
 def print_prompt(prompt):
-    print("="*20)
-    print(prompt.to_string())
-    print("="*20)
+    if _is_debug():
+        print("=" * 20)
+        print(prompt.to_string())
+        print("=" * 20)
     return prompt
 
 
