@@ -106,7 +106,14 @@ def json_loader(filepath: str) -> list[Document]:
         out.append(
             Document(
                 page_content=content,
-                metadata={"source": filepath, "section": section, "board": board, "date": date},
+                metadata={
+                    "source": filepath,
+                    "section": section,
+                    "board": board,
+                    "date": date,
+                    "title": title,
+                    "reply_count": reply_count,
+                },
             )
         )
     return out

@@ -9,7 +9,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import (
     load_chroma_config,
     get_abs_path,
-    list_allowed_files_recursive,
     get_file_md5_hex,
     logger,
 )
@@ -25,6 +24,7 @@ from rag.knowledge_loader import (
     load_recorded,
     save_recorded,
     get_file_documents,
+    list_files_by_chroma_config,
 )
 
 
@@ -56,24 +56,53 @@ class VectorStoreService:
             search_kwargs={"k": load_chroma_config()["k"]}
         )
 
-    def load_document(self) -> None:
+    def load_document(self, _retry_after_rebuild: bool = False) -> None:
         """
-        从 data_path 下递归读取所有子目录（如以版面名称命名的文件夹）内的数据文件，
-        转为向量存入向量库。按「相对路径|MD5」记录已处理文件；能识别文件变更或删除，
-        删除向量库中对应旧数据并重新加载新内容。
-        说明：若从仅记录 MD5 的旧版本升级，建议先清空 chroma_db 与 md5 记录文件再首次运行，以保证与磁盘一致。
+        按 chroma 配置（info_path、section_info）加载知识库文件，带层级信息并更新向量库。
+        1）按 config 递归列出文件，为每条文档写入 source_file 与层级元数据（版面/子版面/帖子题目、回复数等）；
+        2）通过 MD5 检测文件与帖子变化，仅对变更或新增文件更新向量，对已删除文件移除对应向量；
+        3）若加载过程因向量库或 MD5 异常出错，则清空向量库与 MD5 记录后重试一次全量加载。
         """
         chroma_cfg = load_chroma_config()
-        data_abs = get_abs_path(chroma_cfg["data_path"])
         md5_store_path = get_abs_path(chroma_cfg["md5_hex_store"])
-        allowed_types = tuple(chroma_cfg["allow_knowledge_file_type"])
 
-        all_paths = list_allowed_files_recursive(data_abs, allowed_types)
+        try:
+            self._load_document_impl(chroma_cfg, md5_store_path)
+        except Exception as e:
+            logger.error(f"[加载知识库]加载过程出错：{str(e)}", exc_info=True)
+            if not _retry_after_rebuild:
+                logger.info("[加载知识库]将清空向量库与 MD5 记录后重试一次全量加载")
+                force_rebuild_knowledge_base()
+                self.vector_store = Chroma(
+                    collection_name=chroma_cfg["collection_name"],
+                    embedding_function=embed_model,
+                    persist_directory=chroma_cfg["persist_directory"],
+                )
+                self._load_document_impl(chroma_cfg, md5_store_path)
+            else:
+                raise
+
+    def _enrich_doc_metadata(self, doc: Document, rel_path: str) -> None:
+        """为文档写入 source_file 与层级信息（版面/子版面/题目/回复数或层级路径）。"""
+        doc.metadata["source_file"] = rel_path
+        section = doc.metadata.get("section")
+        if section is not None:
+            board = doc.metadata.get("board", "")
+            title = doc.metadata.get("title", "")
+            reply_count = doc.metadata.get("reply_count", 0)
+            doc.metadata["hierarchy"] = f"{section} > {board} > {title}"
+            doc.metadata["reply_count"] = reply_count
+        else:
+            doc.metadata["hierarchy_path"] = rel_path
+
+    def _load_document_impl(self, chroma_cfg: dict, md5_store_path: str) -> None:
+        """实际执行：按配置列举文件、比对 MD5、更新向量库。"""
+        file_list = list_files_by_chroma_config(chroma_cfg)
         current: dict[str, str] = {}
-        for path in all_paths:
-            md5_hex = get_file_md5_hex(path)
+        for abs_path, rel_path in file_list:
+            md5_hex = get_file_md5_hex(abs_path)
             if md5_hex is not None:
-                current[norm_rel_path(path, data_abs)] = md5_hex
+                current[rel_path] = md5_hex
 
         recorded = load_recorded(md5_store_path, MD5_RECORD_SEP)
 
@@ -83,46 +112,50 @@ class VectorStoreService:
                 delete_vectors_by_source(self.vector_store, rel_path)
                 del recorded[rel_path]
 
-        for path in all_paths:
-            rel_path = norm_rel_path(path, data_abs)
+        for abs_path, rel_path in file_list:
             md5_hex = current.get(rel_path)
             if md5_hex is None:
                 continue
             prev_md5 = recorded.get(rel_path)
             if prev_md5 == md5_hex:
-                logger.info(f"[加载知识库]{path} 内容未变化，跳过")
+                logger.debug(f"[加载知识库]{rel_path} 内容未变化，跳过")
                 continue
 
             try:
                 if rel_path in recorded:
-                    logger.info(f"[加载知识库]{path} 内容已变更，先删除旧向量再重新加载")
+                    logger.info(f"[加载知识库]{rel_path} 内容已变更，先删除旧向量再重新加载")
                     delete_vectors_by_source(self.vector_store, rel_path)
 
-                documents = get_file_documents(path)
+                documents = get_file_documents(abs_path)
                 if not documents:
-                    logger.warning(f"[加载知识库]{path} 内没有有效文本内容，跳过")
+                    logger.warning(f"[加载知识库]{rel_path} 内没有有效文本内容，跳过")
                     recorded[rel_path] = md5_hex
                     continue
 
+                for doc in documents:
+                    self._enrich_doc_metadata(doc, rel_path)
                 split_document = self.spliter.split_documents(documents)
                 if not split_document:
-                    logger.warning(f"[加载知识库]{path} 分片后没有有效文本内容，跳过")
+                    logger.warning(f"[加载知识库]{rel_path} 分片后没有有效文本内容，跳过")
                     continue
 
                 for doc in split_document:
-                    doc.metadata["source_file"] = rel_path
+                    if "source_file" not in doc.metadata:
+                        self._enrich_doc_metadata(doc, rel_path)
                 self.vector_store.add_documents(split_document)
                 recorded[rel_path] = md5_hex
-                logger.info(f"[加载知识库]{path} 内容加载成功")
+                logger.info(f"[加载知识库]{rel_path} 内容加载成功")
             except Exception as e:
-                logger.error(f"[加载知识库]{path} 加载失败：{str(e)}", exc_info=True)
+                logger.error(f"[加载知识库]{rel_path} 加载失败：{str(e)}", exc_info=True)
+                raise
 
         save_recorded(recorded, md5_store_path, MD5_RECORD_SEP)
 
 
-def _force_rebuild_knowledge_base() -> None:
-    """删除 chroma_db 与 md5 记录后由调用方重新执行 load_document 以全量重建。"""
+def force_rebuild_knowledge_base() -> None:
+    """删除 chroma_db 与 md5 记录；调用方随后可再次执行 load_document 以全量重建。"""
     import shutil
+
     chroma_cfg = load_chroma_config()
     chroma_path = get_abs_path(chroma_cfg["persist_directory"])
     md5_path = get_abs_path(chroma_cfg["md5_hex_store"])
@@ -136,7 +169,7 @@ def _force_rebuild_knowledge_base() -> None:
 
 if __name__ == "__main__":
     if "--force-reload" in sys.argv:
-        _force_rebuild_knowledge_base()
+        force_rebuild_knowledge_base()
     vs = VectorStoreService()
     vs.load_document()
     retriever = vs.get_retriever()
