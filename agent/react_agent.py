@@ -9,17 +9,29 @@ from agent.tools.query_tools.query_tools import (
     query_board_posts,
     list_crawled_boards,
 )
+from agent.tools.init_tools.init_tools import run_bbs_init, run_full_init, is_initialized
 from utils.prompt_loader import load_system_prompts
 from model.factory import chat_model
 from langchain.agents import create_agent
 
 
 class ReactAgent:
-    def __init__(self):
+    def __init__(self, auto_init: bool = True):
+        """
+        :param auto_init: 若为 True 且尚未初始化（init.json 中 init_status 非 True），则启动时自动执行一次 BBS 初始化。
+        """
+        if auto_init and not is_initialized():
+            try:
+                run_full_init(headless=True)
+            except Exception as e:
+                # 初始化失败不阻塞 Agent 创建，仅依赖后续用户通过 run_bbs_init 再试
+                import warnings
+                warnings.warn(f"启动时自动初始化未成功: {e}", UserWarning)
+
         self.agent = create_agent(
             model=chat_model,
             system_prompt=load_system_prompts(),
-            tools=[bbs_rag_query, query_board_posts, list_crawled_boards],
+            tools=[bbs_rag_query, query_board_posts, list_crawled_boards, run_bbs_init],
             middleware=[monitor_tool, log_before_model, report_prompt_switch],
         )
 

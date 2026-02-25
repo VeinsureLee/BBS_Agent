@@ -28,9 +28,19 @@ def _get_rag_service() -> RagSummarizeService:
 
 
 def _get_data_path() -> str:
-    """获取 data 目录绝对路径（与向量库配置一致）。"""
+    """获取版面帖子 JSON 根目录：若 config/web_structure/save.json 存在且含 posts_root 则优先使用，否则用 chroma 的 data_path。"""
+    save_path = get_abs_path("config/web_structure/save.json")
+    if os.path.exists(save_path):
+        try:
+            with open(save_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            posts_root = data.get("posts_root", "").strip()
+            if posts_root:
+                return get_abs_path(posts_root)
+        except Exception:
+            pass
     cfg = load_chroma_config()
-    return get_abs_path(cfg["data_path"])
+    return get_abs_path(cfg.get("data_path", "data"))
 
 
 def _collect_board_json_paths() -> list[str]:
