@@ -10,6 +10,10 @@ from langchain_community.chat_models.tongyi import BaseChatModel
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_community.chat_models.tongyi import ChatTongyi
 from utils.config_handler import load_rag_config
+from utils.env_handler import load_env
+
+# 从 .env 加载环境变量（含 DASHSCOPE_API_KEY），供 ChatTongyi / DashScopeEmbeddings 使用
+load_env()
 
 
 class BaseModelFactory(ABC):

@@ -92,5 +92,6 @@ if __name__ == "__main__":
     print(bbs_conf.get("BBS_Url"))
     print("crawled path:", get_crawled_config_path())
     print("crawled config:", load_crawled_config())
+    print("prompts config:", prompts_conf)
     print("rag config:", rag_conf)
     print("chroma config:", chroma_conf)

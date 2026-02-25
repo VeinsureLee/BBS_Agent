@@ -120,11 +120,35 @@ class VectorStoreService:
         save_recorded(recorded, md5_store_path, MD5_RECORD_SEP)
 
 
+def _force_rebuild_knowledge_base() -> None:
+    """删除 chroma_db 与 md5 记录后由调用方重新执行 load_document 以全量重建。"""
+    import shutil
+    chroma_cfg = load_chroma_config()
+    chroma_path = get_abs_path(chroma_cfg["persist_directory"])
+    md5_path = get_abs_path(chroma_cfg["md5_hex_store"])
+    if os.path.exists(chroma_path):
+        shutil.rmtree(chroma_path, ignore_errors=True)
+        logger.info(f"[清空知识库]已清空向量库目录: {chroma_path}")
+    if os.path.exists(md5_path):
+        os.remove(md5_path)
+        logger.info(f"[清空MD5记录]已删除 MD5 记录文件: {md5_path}")
+
+
 if __name__ == "__main__":
+    if "--force-reload" in sys.argv:
+        _force_rebuild_knowledge_base()
     vs = VectorStoreService()
     vs.load_document()
     retriever = vs.get_retriever()
-    res = retriever.invoke("扫地")
+    query = "恋爱"
+    res = retriever.invoke(query)
+    print(f"[检索测试] 查询「{query}」返回 {len(res)} 条。")
+    if len(res) == 0:
+        print("[检索测试] 未命中任何文档。请使用 --force-reload 重建知识库后重试：")
+        print(f"  python -m rag.vector_store --force-reload")
     for r in res:
         print(r.page_content)
         print("-" * 20)
+    print("="*20)
+    print(f"[检索测试] 查询「{query}」返回 {len(res)} 条。")
+    print("="*20)
