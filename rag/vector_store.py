@@ -107,9 +107,20 @@ class VectorStoreService:
             if md5_hex is not None:
                 current[rel_path] = md5_hex
 
+        if not os.path.exists(md5_store_path) and (file_list or chroma_cfg.get("introductions")):
+            logger.info("[加载知识库]MD5 记录不存在但向量库可能已有数据，先清空向量库再全量加载，避免重复写入")
+            force_rebuild_knowledge_base()
+            self.vector_store = Chroma(
+                collection_name=chroma_cfg["collection_name"],
+                embedding_function=embed_model,
+                persist_directory=chroma_cfg["persist_directory"],
+            )
+
         recorded = load_recorded(md5_store_path, MD5_RECORD_SEP)
 
         for rel_path in list(recorded.keys()):
+            if rel_path.startswith(INTRODUCTIONS_PREFIX):
+                continue
             if rel_path not in current:
                 logger.info(f"[加载知识库]文件已删除或移出，移除向量: {rel_path}")
                 delete_vectors_by_source(self.vector_store, rel_path)
