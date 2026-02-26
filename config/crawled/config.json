@@ -1,6 +1,0 @@
-{
-  "login_page_url": "https://bbs.byr.cn",
-  "username_input_id": "id",
-  "password_input_id": "pwd",
-  "login_button_id": "b_login"
-}

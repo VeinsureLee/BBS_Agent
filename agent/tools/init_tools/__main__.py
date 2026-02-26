@@ -1,8 +1,12 @@
 """
 BBS 初始化调试入口：启动浏览器 -> 初始化（爬取登录框->登录->爬取版面->爬取置顶）-> 退出浏览器。
-默认弹出浏览器窗口；加 --headless 或 -q 则不弹出（无头模式）。
-  python -m agent.tools.init_tools
-  python -m agent.tools.init_tools --headless
+支持仅爬取单个版面，避免全量时间过长。
+
+用法:
+  全量初始化:  python -m agent.tools.init_tools
+  无头模式:    python -m agent.tools.init_tools --headless
+  单版面:      python -m agent.tools.init_tools --board "悄悄话栏目"
+  单版面不爬详情: python -m agent.tools.init_tools --board "版面名" --no-detail
 """
 import sys
 import os
@@ -12,27 +16,48 @@ _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from agent.tools.init_tools.init_tools import start_browser, run_init, close_browser
+from agent.tools.init_tools.init_tools import start_browser, run_init, run_single_board_init, close_browser
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
+def _get_board_name_from_argv():
+    """解析 --board 后的版面名称。"""
+    argv = sys.argv
+    for i, a in enumerate(argv):
+        if a in ("--board", "-b") and i + 1 < len(argv):
+            return argv[i + 1].strip()
+    return None
+
+
 if __name__ == "__main__":
-    # --headless / -q 表示不弹出浏览器；不加则弹出浏览器
     popup_browser = "--headless" not in sys.argv and "-q" not in sys.argv
     debug = True
+    board_name = _get_board_name_from_argv()
+    fetch_article_detail = "--no-detail" not in sys.argv
+
     try:
         start_browser(debug=popup_browser)
-        summary = run_init(debug=debug)
-        close_browser()
-        if summary.get("skipped"):
-            print("已初始化，跳过爬取。")
+        if board_name:
+            summary = run_single_board_init(
+                board_name,
+                fetch_article_detail=fetch_article_detail,
+                debug=debug,
+            )
+            print(f"单版面爬取完成: {summary['board_name']}（{summary['section_name']}）")
+            print(f"  置顶条数: {summary['count']}")
+            print(f"  保存目录: {summary['introductions_path']}")
         else:
-            print("BBS 初始化完成（登录页 + 版面结构 + 各版面置顶内容）")
-        print("  登录配置:", summary["login_config_path"])
-        print("  版面配置:", summary["board_path"])
-        print("  置顶内容:", summary.get("introductions_path", ""))
+            summary = run_init(debug=debug)
+            if summary.get("skipped"):
+                print("已初始化，跳过爬取。")
+            else:
+                print("BBS 初始化完成（登录页 + 版面结构 + 各版面置顶内容）")
+            print("  登录配置:", summary["login_config_path"])
+            print("  版面配置:", summary["board_path"])
+            print("  置顶内容:", summary.get("introductions_path", ""))
+        close_browser()
     except Exception as e:
-        print("初始化失败:", e)
+        print("失败:", e)
         sys.exit(1)

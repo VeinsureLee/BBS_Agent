@@ -14,14 +14,25 @@ from utils.config_handler import (
     driver_conf,
     bbs_conf,
     load_web_structure_save_config,
+    load_web_structure_login_config,
+    load_web_structure_board_config,
     get_web_structure_login_config_path,
     get_web_structure_board_path,
     get_web_structure_init_status_path,
     get_web_structure_introductions_path,
 )
 from agent.tools.init_tools.login_tools import crawl_login_page, do_login
-from agent.tools.init_tools.board_tools import crawl_sections_and_boards, SECTION_COUNT
-from agent.tools.init_tools.inroductions import crawl_one_section_introductions, save_introductions
+from agent.tools.init_tools.board_tools import (
+    crawl_sections_and_boards,
+    SECTION_COUNT,
+    find_board_info_by_name,
+    board_url_to_request_url,
+)
+from agent.tools.init_tools.inroductions import (
+    crawl_one_section_introductions,
+    crawl_board_introductions,
+    save_introductions,
+)
 from utils.timer import timer
 
 # ---------------------------------------------------------------------------
@@ -190,6 +201,81 @@ def run_init(debug: bool = False) -> dict:
     except Exception:
         _set_init_status(False)
         raise
+
+
+def run_single_board_init(
+    board_name: str,
+    fetch_article_detail: bool = True,
+    debug: bool = False,
+) -> dict:
+    """
+    仅爬取单个版面的置顶介绍并保存，避免全量初始化时间过长。
+    需先 start_browser()；依赖已有 login 配置与 board.json（至少跑过一次全量初始化或已有版面结构）。
+    :param board_name: 版面名称（与 board.json 中一致，如「悄悄话栏目」）
+    :param fetch_article_detail: 是否点开每条置顶爬取详情（时间、人物、赞踩等）
+    :param debug: 是否打印调试信息
+    :return: 含 board_name, section_name, introductions_path, count 等
+    """
+    global _page
+    if _page is None:
+        raise RuntimeError("请先调用 start_browser() 启动浏览器。")
+    load_web_structure_save_config()
+    BBS_Url = (bbs_conf.get("BBS_Url") or "").strip().rstrip("/")
+    if not BBS_Url:
+        raise ValueError("未配置 BBS_Url，请在 config/local/bbs.json 中设置")
+
+    board_cfg = load_web_structure_board_config()
+    sections = board_cfg.get("sections", [])
+    board_url, section_name = find_board_info_by_name(sections, board_name)
+    if not board_url or not section_name:
+        raise ValueError(f"未在 board.json 中找到版面「{board_name}」，请先执行全量初始化或确认版面名称正确")
+
+    login_cfg = load_web_structure_login_config()
+    if not login_cfg.get("login_page_url"):
+        raise ValueError("未找到登录配置，请先执行一次全量初始化以生成 login 配置")
+    do_login(
+        _page,
+        login_cfg["login_page_url"],
+        login_cfg.get("username_input_id", "id"),
+        login_cfg.get("password_input_id", "pwd"),
+        login_cfg.get("login_button_id", "b_login"),
+        debug=debug,
+    )
+
+    request_url = board_url_to_request_url(board_url, BBS_Url)
+    introductions = crawl_board_introductions(
+        _page, request_url, section_name, board_name, debug=debug
+    )
+    if fetch_article_detail and introductions:
+        from agent.tools.init_tools.inroductions import crawl_article_detail
+        for item in introductions:
+            url = (item.get("url") or "").strip()
+            if url:
+                try:
+                    item["floors"] = crawl_article_detail(_page, url, BBS_Url, debug=debug)
+                except Exception:
+                    item["floors"] = []
+            else:
+                item["floors"] = []
+
+    section_url = ""
+    for s in sections:
+        if (s.get("name") or "").strip() == section_name:
+            section_url = (s.get("url") or "").strip()
+            break
+    section_with_intros = {
+        "name": section_name,
+        "url": section_url,
+        "boards": [{"name": board_name, "url": board_url, "introductions": introductions}],
+    }
+    save_introductions([section_with_intros], only_last_section=True)
+    intro_path = _get_introductions_path()
+    return {
+        "board_name": board_name,
+        "section_name": section_name,
+        "introductions_path": str(intro_path),
+        "count": len(introductions),
+    }
 
 
 # ---------------------------------------------------------------------------

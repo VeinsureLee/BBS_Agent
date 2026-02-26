@@ -35,15 +35,24 @@ def _get_introductions_root() -> Path:
 def _parse_sticky_posts_from_board_html(html: str) -> list:
     """
     从版面列表页 HTML 中解析置顶内容。置顶行由 <tr class="top"> 标记。
+    先尝试 table.board-list.tiz，若无则尝试 table.board-list，再尝试任意 table 下的 tr.top。
     """
     soup = BeautifulSoup(html, "html.parser")
     rows = soup.select("table.board-list.tiz tbody tr.top")
+    if not rows:
+        rows = soup.select("table.board-list tbody tr.top")
+    if not rows:
+        rows = soup.select("table tbody tr.top")
     result = []
     for tr in rows:
         tds = tr.find_all("td")
-        if len(tds) < 5:
+        # 常见为 5 列（首列标记/序号 + 标题/时间/作者/回复）；少数版面可能 4 列（标题在 tds[0]）
+        if len(tds) < 4:
             continue
-        title_td, time_td, author_td, reply_td = tds[1], tds[2], tds[3], tds[4]
+        if len(tds) >= 5:
+            title_td, time_td, author_td, reply_td = tds[1], tds[2], tds[3], tds[4]
+        else:
+            title_td, time_td, author_td, reply_td = tds[0], tds[1], tds[2], tds[3]
         article_a = title_td.find("a", href=re.compile(r"^/article/[^/]+/\d+$"))
         if not article_a:
             article_a = title_td.find("a", href=re.compile(r"^/article/"))
@@ -216,6 +225,10 @@ def crawl_board_introductions(
     """
     page.goto(request_url, wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle", timeout=10000)
+    try:
+        page.wait_for_selector("tr.top", timeout=500)
+    except Exception:
+        pass
     html = page.content()
     posts = _parse_sticky_posts_from_board_html(html)
     if debug:

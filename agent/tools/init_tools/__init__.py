@@ -18,6 +18,7 @@ init_tools 包：
 from .init_tools import (
     start_browser,
     run_init,
+    run_single_board_init,
     close_browser,
     run_bbs_init,
     is_initialized,
@@ -29,6 +30,7 @@ from .inroductions import crawl_board_introductions, crawl_one_section_introduct
 __all__ = [
     "start_browser",
     "run_init",
+    "run_single_board_init",
     "close_browser",
     "run_bbs_init",
     "is_initialized",
