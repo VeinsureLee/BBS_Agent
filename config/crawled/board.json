@@ -1,0 +1,928 @@
+{
+  "sections": [
+    {
+      "name": "本站站务",
+      "url": "https://bbs.byr.cn/#!section/0",
+      "boards": [
+        {
+          "name": "意见与建议",
+          "url": "https://bbs.byr.cn/#!board/Advice"
+        },
+        {
+          "name": "站务公告栏",
+          "url": "https://bbs.byr.cn/#!board/Announce"
+        },
+        {
+          "name": "论坛使用帮助",
+          "url": "https://bbs.byr.cn/#!board/BBShelp"
+        },
+        {
+          "name": "论坛数据统计及日志",
+          "url": "https://bbs.byr.cn/#!section/BBSLOG"
+        },
+        {
+          "name": "竞猜",
+          "url": "https://bbs.byr.cn/#!board/Bet"
+        },
+        {
+          "name": "版主事务区",
+          "url": "https://bbs.byr.cn/#!section/BM_Affair"
+        },
+        {
+          "name": "版主及助理招聘区",
+          "url": "https://bbs.byr.cn/#!board/BM_Market"
+        },
+        {
+          "name": "版面事务区",
+          "url": "https://bbs.byr.cn/#!section/Board"
+        },
+        {
+          "name": "北邮人论坛十二周年站庆",
+          "url": "https://bbs.byr.cn/#!board/BYR12"
+        },
+        {
+          "name": "北邮人团队",
+          "url": "https://bbs.byr.cn/#!section/BYR_Team"
+        },
+        {
+          "name": "cnbbs转信",
+          "url": "https://bbs.byr.cn/#!section/cn_bbs"
+        },
+        {
+          "name": "业务合作与广告投放",
+          "url": "https://bbs.byr.cn/#!board/Cooperation"
+        },
+        {
+          "name": "投诉与仲裁",
+          "url": "https://bbs.byr.cn/#!section/Court"
+        },
+        {
+          "name": "论坛委员会",
+          "url": "https://bbs.byr.cn/#!board/ForumCommittee"
+        },
+        {
+          "name": "账号事务管理",
+          "url": "https://bbs.byr.cn/#!board/ID"
+        },
+        {
+          "name": "更新与改进",
+          "url": "https://bbs.byr.cn/#!board/Progress"
+        },
+        {
+          "name": "积分",
+          "url": "https://bbs.byr.cn/#!board/Score"
+        },
+        {
+          "name": "本站系统讨论区",
+          "url": "https://bbs.byr.cn/#!board/sysop"
+        },
+        {
+          "name": "新手测试区",
+          "url": "https://bbs.byr.cn/#!board/test"
+        }
+      ]
+    },
+    {
+      "name": "北邮校园",
+      "url": "https://bbs.byr.cn/#!section/1",
+      "boards": [
+        {
+          "name": "北邮教务处",
+          "url": "https://bbs.byr.cn/#!board/AcademicAffairs"
+        },
+        {
+          "name": "北邮欢迎你",
+          "url": "https://bbs.byr.cn/#!board/AimBUPT"
+        },
+        {
+          "name": "社团组织",
+          "url": "https://bbs.byr.cn/#!section/Association"
+        },
+        {
+          "name": "北邮生活",
+          "url": "https://bbs.byr.cn/#!board/BUPT"
+        },
+        {
+          "name": "校园网",
+          "url": "https://bbs.byr.cn/#!board/BUPTNet"
+        },
+        {
+          "name": "北邮邮局",
+          "url": "https://bbs.byr.cn/#!board/BUPTPost"
+        },
+        {
+          "name": "北邮人公告栏",
+          "url": "https://bbs.byr.cn/#!board/BYR_Bulletin"
+        },
+        {
+          "name": "北邮校园卡",
+          "url": "https://bbs.byr.cn/#!board/CampusCard"
+        },
+        {
+          "name": "悼念周先生",
+          "url": "https://bbs.byr.cn/#!board/daonian"
+        },
+        {
+          "name": "北邮关注",
+          "url": "https://bbs.byr.cn/#!board/Focus"
+        },
+        {
+          "name": "毕业生之家",
+          "url": "https://bbs.byr.cn/#!board/Graduation"
+        },
+        {
+          "name": "北邮后勤处",
+          "url": "https://bbs.byr.cn/#!board/Houqin"
+        },
+        {
+          "name": "本科教务新系统",
+          "url": "https://bbs.byr.cn/#!board/jiaowu_newSystem"
+        },
+        {
+          "name": "北邮基建处",
+          "url": "https://bbs.byr.cn/#!board/JiJianChu"
+        },
+        {
+          "name": "军训快报",
+          "url": "https://bbs.byr.cn/#!board/Junxun"
+        },
+        {
+          "name": "北邮图书馆",
+          "url": "https://bbs.byr.cn/#!board/Library"
+        },
+        {
+          "name": "北邮记忆",
+          "url": "https://bbs.byr.cn/#!board/MyBUPT"
+        },
+        {
+          "name": "热点活动",
+          "url": "https://bbs.byr.cn/#!board/Recommend"
+        },
+        {
+          "name": "院系校区",
+          "url": "https://bbs.byr.cn/#!section/School"
+        },
+        {
+          "name": "北邮保卫处",
+          "url": "https://bbs.byr.cn/#!board/SecurityDivision"
+        },
+        {
+          "name": "助学之家",
+          "url": "https://bbs.byr.cn/#!board/Selfsupport"
+        },
+        {
+          "name": "北邮学生处",
+          "url": "https://bbs.byr.cn/#!board/StudentAffairs"
+        },
+        {
+          "name": "邮问有答",
+          "url": "https://bbs.byr.cn/#!board/StudentQuery"
+        }
+      ]
+    },
+    {
+      "name": "学术科技",
+      "url": "https://bbs.byr.cn/#!section/2",
+      "boards": [
+        {
+          "name": "算法与程序设计竞赛",
+          "url": "https://bbs.byr.cn/#!board/ACM_ICPC"
+        },
+        {
+          "name": "BBS安装管理",
+          "url": "https://bbs.byr.cn/#!board/BBSMan_Dev"
+        },
+        {
+          "name": "北邮人开放平台",
+          "url": "https://bbs.byr.cn/#!board/BBSOpenAPI"
+        },
+        {
+          "name": "电子电路",
+          "url": "https://bbs.byr.cn/#!board/Circuit"
+        },
+        {
+          "name": "通信技术",
+          "url": "https://bbs.byr.cn/#!board/Communications"
+        },
+        {
+          "name": "C/C++程序设计语言",
+          "url": "https://bbs.byr.cn/#!board/CPP"
+        },
+        {
+          "name": "数据库技术",
+          "url": "https://bbs.byr.cn/#!board/Database"
+        },
+        {
+          "name": ".NET程序设计",
+          "url": "https://bbs.byr.cn/#!board/dotNET"
+        },
+        {
+          "name": "经济学",
+          "url": "https://bbs.byr.cn/#!board/Economics"
+        },
+        {
+          "name": "嵌入式系统",
+          "url": "https://bbs.byr.cn/#!board/Embedded_System"
+        },
+        {
+          "name": "Go语言",
+          "url": "https://bbs.byr.cn/#!board/Golang"
+        },
+        {
+          "name": "电脑硬件与维修",
+          "url": "https://bbs.byr.cn/#!board/HardWare"
+        },
+        {
+          "name": "创新实践",
+          "url": "https://bbs.byr.cn/#!board/Innovation"
+        },
+        {
+          "name": "Java技术",
+          "url": "https://bbs.byr.cn/#!board/Java"
+        },
+        {
+          "name": "JavaScript语言",
+          "url": "https://bbs.byr.cn/#!board/JavaScript"
+        },
+        {
+          "name": "Linux操作系统",
+          "url": "https://bbs.byr.cn/#!board/Linux"
+        },
+        {
+          "name": "创客与开源硬件",
+          "url": "https://bbs.byr.cn/#!board/Makerclub"
+        },
+        {
+          "name": "数学建模",
+          "url": "https://bbs.byr.cn/#!board/MathModel"
+        },
+        {
+          "name": "Matlab实验室",
+          "url": "https://bbs.byr.cn/#!board/Matlab"
+        },
+        {
+          "name": "机器学习与数据挖掘",
+          "url": "https://bbs.byr.cn/#!board/ML_DM"
+        },
+        {
+          "name": "移动互联网",
+          "url": "https://bbs.byr.cn/#!board/MobileInternet"
+        },
+        {
+          "name": "智能终端开发技术",
+          "url": "https://bbs.byr.cn/#!board/MobileTerminalAT"
+        },
+        {
+          "name": "笔记本电脑",
+          "url": "https://bbs.byr.cn/#!board/Notebook"
+        },
+        {
+          "name": "办公软件",
+          "url": "https://bbs.byr.cn/#!board/OfficeTool"
+        },
+        {
+          "name": "科研与论文",
+          "url": "https://bbs.byr.cn/#!board/Paper"
+        },
+        {
+          "name": "Python",
+          "url": "https://bbs.byr.cn/#!board/Python"
+        },
+        {
+          "name": "机器人",
+          "url": "https://bbs.byr.cn/#!board/Robot"
+        },
+        {
+          "name": "搜索引擎",
+          "url": "https://bbs.byr.cn/#!board/SearchEngine"
+        },
+        {
+          "name": "信息安全",
+          "url": "https://bbs.byr.cn/#!board/Security"
+        },
+        {
+          "name": "智能车",
+          "url": "https://bbs.byr.cn/#!board/Smartcar"
+        },
+        {
+          "name": "软件开发",
+          "url": "https://bbs.byr.cn/#!board/SoftDesign"
+        },
+        {
+          "name": "大数据可视化",
+          "url": "https://bbs.byr.cn/#!board/Visualization"
+        },
+        {
+          "name": "Windows操作系统",
+          "url": "https://bbs.byr.cn/#!board/Windows"
+        },
+        {
+          "name": "WWW技术",
+          "url": "https://bbs.byr.cn/#!board/WWWTechnology"
+        }
+      ]
+    },
+    {
+      "name": "信息社会",
+      "url": "https://bbs.byr.cn/#!section/3",
+      "boards": [
+        {
+          "name": "广告乐园",
+          "url": "https://bbs.byr.cn/#!section/Advertise"
+        },
+        {
+          "name": "考研专版",
+          "url": "https://bbs.byr.cn/#!board/AimGraduate"
+        },
+        {
+          "name": "学为人师，行为世范",
+          "url": "https://bbs.byr.cn/#!board/BNU"
+        },
+        {
+          "name": "北邮互联网俱乐部",
+          "url": "https://bbs.byr.cn/#!board/BUPT_Internet_Club"
+        },
+        {
+          "name": "北邮人在上海",
+          "url": "https://bbs.byr.cn/#!board/BYRatSH"
+        },
+        {
+          "name": "深圳邮人家",
+          "url": "https://bbs.byr.cn/#!board/BYRatSZ"
+        },
+        {
+          "name": "北邮人BT专区",
+          "url": "https://bbs.byr.cn/#!section/BYRBT"
+        },
+        {
+          "name": "认证考试",
+          "url": "https://bbs.byr.cn/#!board/Certification"
+        },
+        {
+          "name": "公务员",
+          "url": "https://bbs.byr.cn/#!board/CivilServant"
+        },
+        {
+          "name": "管理咨询",
+          "url": "https://bbs.byr.cn/#!board/Consulting"
+        },
+        {
+          "name": "创业交流",
+          "url": "https://bbs.byr.cn/#!board/Entrepreneurship"
+        },
+        {
+          "name": "家庭生活",
+          "url": "https://bbs.byr.cn/#!board/FamilyLife"
+        },
+        {
+          "name": "金融职场",
+          "url": "https://bbs.byr.cn/#!board/Financecareer"
+        },
+        {
+          "name": "金融投资",
+          "url": "https://bbs.byr.cn/#!board/Financial"
+        },
+        {
+          "name": "飞跃重洋",
+          "url": "https://bbs.byr.cn/#!board/GoAbroad"
+        },
+        {
+          "name": "安居乐业",
+          "url": "https://bbs.byr.cn/#!board/Home"
+        },
+        {
+          "name": "信息产业",
+          "url": "https://bbs.byr.cn/#!board/IT"
+        },
+        {
+          "name": "毕业生找工作",
+          "url": "https://bbs.byr.cn/#!board/Job"
+        },
+        {
+          "name": "招聘信息专版",
+          "url": "https://bbs.byr.cn/#!board/JobInfo"
+        },
+        {
+          "name": "跳槽就业",
+          "url": "https://bbs.byr.cn/#!board/Jump"
+        },
+        {
+          "name": "网络资源",
+          "url": "https://bbs.byr.cn/#!board/NetResources"
+        },
+        {
+          "name": "海外北邮人",
+          "url": "https://bbs.byr.cn/#!board/Overseas"
+        },
+        {
+          "name": "兼职实习信息",
+          "url": "https://bbs.byr.cn/#!board/ParttimeJob"
+        },
+        {
+          "name": "产品疯人院",
+          "url": "https://bbs.byr.cn/#!board/PMatBUPT"
+        },
+        {
+          "name": "学习交流区",
+          "url": "https://bbs.byr.cn/#!board/StudyShare"
+        },
+        {
+          "name": "天气预报",
+          "url": "https://bbs.byr.cn/#!board/Weather"
+        },
+        {
+          "name": "职场人生",
+          "url": "https://bbs.byr.cn/#!board/WorkLife"
+        }
+      ]
+    },
+    {
+      "name": "人文艺术",
+      "url": "https://bbs.byr.cn/#!section/4",
+      "boards": [
+        {
+          "name": "天文",
+          "url": "https://bbs.byr.cn/#!board/Astronomy"
+        },
+        {
+          "name": "辩论",
+          "url": "https://bbs.byr.cn/#!board/Debate"
+        },
+        {
+          "name": "视频制作",
+          "url": "https://bbs.byr.cn/#!board/DV"
+        },
+        {
+          "name": "英语吧",
+          "url": "https://bbs.byr.cn/#!board/EnglishBar"
+        },
+        {
+          "name": "奇闻异事",
+          "url": "https://bbs.byr.cn/#!board/Ghost"
+        },
+        {
+          "name": "吉他",
+          "url": "https://bbs.byr.cn/#!board/Guitar"
+        },
+        {
+          "name": "日语学习",
+          "url": "https://bbs.byr.cn/#!board/Japanese"
+        },
+        {
+          "name": "韩流吧",
+          "url": "https://bbs.byr.cn/#!board/KoreanWind"
+        },
+        {
+          "name": "音乐交流区",
+          "url": "https://bbs.byr.cn/#!board/Music"
+        },
+        {
+          "name": "摄影",
+          "url": "https://bbs.byr.cn/#!board/Photo"
+        },
+        {
+          "name": "诗词歌赋",
+          "url": "https://bbs.byr.cn/#!board/Poetry"
+        },
+        {
+          "name": "心理健康在线",
+          "url": "https://bbs.byr.cn/#!board/PsyHealthOnline"
+        },
+        {
+          "name": "曲苑杂谈",
+          "url": "https://bbs.byr.cn/#!board/Quyi"
+        },
+        {
+          "name": "书屋",
+          "url": "https://bbs.byr.cn/#!board/Reading"
+        },
+        {
+          "name": "科幻奇幻",
+          "url": "https://bbs.byr.cn/#!board/ScienceFiction"
+        },
+        {
+          "name": "T恤文化",
+          "url": "https://bbs.byr.cn/#!board/Tshirt"
+        }
+      ]
+    },
+    {
+      "name": "生活时尚",
+      "url": "https://bbs.byr.cn/#!section/5",
+      "boards": [
+        {
+          "name": "美容护肤",
+          "url": "https://bbs.byr.cn/#!board/Beauty"
+        },
+        {
+          "name": "北邮愿望树",
+          "url": "https://bbs.byr.cn/#!board/Blessing"
+        },
+        {
+          "name": "衣衣不舍",
+          "url": "https://bbs.byr.cn/#!board/Clothing"
+        },
+        {
+          "name": "星雨星愿",
+          "url": "https://bbs.byr.cn/#!board/Constellations"
+        },
+        {
+          "name": "数字生活",
+          "url": "https://bbs.byr.cn/#!board/DigiLife"
+        },
+        {
+          "name": "创意生活",
+          "url": "https://bbs.byr.cn/#!board/DIYLife"
+        },
+        {
+          "name": "环境保护",
+          "url": "https://bbs.byr.cn/#!board/Environment"
+        },
+        {
+          "name": "情感的天空",
+          "url": "https://bbs.byr.cn/#!board/Feeling"
+        },
+        {
+          "name": "秀色可餐",
+          "url": "https://bbs.byr.cn/#!board/Food"
+        },
+        {
+          "name": "缘来如此",
+          "url": "https://bbs.byr.cn/#!board/Friends"
+        },
+        {
+          "name": "健康保健",
+          "url": "https://bbs.byr.cn/#!board/Health"
+        },
+        {
+          "name": "悄悄话",
+          "url": "https://bbs.byr.cn/#!board/IWhisper"
+        },
+        {
+          "name": "失物招领与拾金不昧",
+          "url": "https://bbs.byr.cn/#!board/LostandFound"
+        },
+        {
+          "name": "谈天说地",
+          "url": "https://bbs.byr.cn/#!board/Talking"
+        }
+      ]
+    },
+    {
+      "name": "休闲娱乐",
+      "url": "https://bbs.byr.cn/#!section/6",
+      "boards": [
+        {
+          "name": "汽车之家",
+          "url": "https://bbs.byr.cn/#!board/AutoMotor"
+        },
+        {
+          "name": "桌面游戏",
+          "url": "https://bbs.byr.cn/#!board/BoardGame"
+        },
+        {
+          "name": "动漫交流区",
+          "url": "https://bbs.byr.cn/#!board/Comic"
+        },
+        {
+          "name": "闪客帝国",
+          "url": "https://bbs.byr.cn/#!board/Flash"
+        },
+        {
+          "name": "煮酒论剑",
+          "url": "https://bbs.byr.cn/#!board/Hero"
+        },
+        {
+          "name": "笑口常开",
+          "url": "https://bbs.byr.cn/#!board/Joke"
+        },
+        {
+          "name": "K歌之王",
+          "url": "https://bbs.byr.cn/#!board/KaraOK"
+        },
+        {
+          "name": "杀人俱乐部",
+          "url": "https://bbs.byr.cn/#!board/KillBar"
+        },
+        {
+          "name": "电影",
+          "url": "https://bbs.byr.cn/#!board/Movie"
+        },
+        {
+          "name": "网络文学",
+          "url": "https://bbs.byr.cn/#!board/NetLiterature"
+        },
+        {
+          "name": "北邮人投票",
+          "url": "https://bbs.byr.cn/#!board/nVote"
+        },
+        {
+          "name": "宠物家园",
+          "url": "https://bbs.byr.cn/#!board/Pet"
+        },
+        {
+          "name": "贴图秀",
+          "url": "https://bbs.byr.cn/#!board/Picture"
+        },
+        {
+          "name": "绿色心情",
+          "url": "https://bbs.byr.cn/#!board/Plant"
+        },
+        {
+          "name": "BYR在线广播",
+          "url": "https://bbs.byr.cn/#!board/RadioOnline"
+        },
+        {
+          "name": "娱乐星天地",
+          "url": "https://bbs.byr.cn/#!board/SuperStar"
+        },
+        {
+          "name": "海天游踪",
+          "url": "https://bbs.byr.cn/#!board/Travel"
+        },
+        {
+          "name": "电视剧",
+          "url": "https://bbs.byr.cn/#!board/TV"
+        },
+        {
+          "name": "视频酷",
+          "url": "https://bbs.byr.cn/#!board/VideoCool"
+        }
+      ]
+    },
+    {
+      "name": "体育健身",
+      "url": "https://bbs.byr.cn/#!section/7",
+      "boards": [
+        {
+          "name": "田径",
+          "url": "https://bbs.byr.cn/#!board/Athletics"
+        },
+        {
+          "name": "羽毛球",
+          "url": "https://bbs.byr.cn/#!board/Badminton"
+        },
+        {
+          "name": "篮球咖啡屋",
+          "url": "https://bbs.byr.cn/#!board/Basketball"
+        },
+        {
+          "name": "台球",
+          "url": "https://bbs.byr.cn/#!board/Billiards"
+        },
+        {
+          "name": "棋牌",
+          "url": "https://bbs.byr.cn/#!board/Chess"
+        },
+        {
+          "name": "梦想单车",
+          "url": "https://bbs.byr.cn/#!board/Cycling"
+        },
+        {
+          "name": "舞蹈",
+          "url": "https://bbs.byr.cn/#!board/Dancing"
+        },
+        {
+          "name": "足球吧",
+          "url": "https://bbs.byr.cn/#!board/Football"
+        },
+        {
+          "name": "极速赛车",
+          "url": "https://bbs.byr.cn/#!board/GSpeed"
+        },
+        {
+          "name": "健身房",
+          "url": "https://bbs.byr.cn/#!board/Gymnasium"
+        },
+        {
+          "name": "武术",
+          "url": "https://bbs.byr.cn/#!board/Kungfu"
+        },
+        {
+          "name": "橄榄球",
+          "url": "https://bbs.byr.cn/#!board/Rugby"
+        },
+        {
+          "name": "天行毽",
+          "url": "https://bbs.byr.cn/#!board/Shuttlecock"
+        },
+        {
+          "name": "滑板名堂",
+          "url": "https://bbs.byr.cn/#!board/Sk8"
+        },
+        {
+          "name": "北邮刷天下",
+          "url": "https://bbs.byr.cn/#!board/Skating"
+        },
+        {
+          "name": "滑雪",
+          "url": "https://bbs.byr.cn/#!board/Ski_Snowboard"
+        },
+        {
+          "name": "碧水情深",
+          "url": "https://bbs.byr.cn/#!board/Swim"
+        },
+        {
+          "name": "乒乓球",
+          "url": "https://bbs.byr.cn/#!board/Tabletennis"
+        },
+        {
+          "name": "跆拳道",
+          "url": "https://bbs.byr.cn/#!board/Taekwondo"
+        },
+        {
+          "name": "网球",
+          "url": "https://bbs.byr.cn/#!board/Tennis"
+        },
+        {
+          "name": "排球",
+          "url": "https://bbs.byr.cn/#!board/Volleyball"
+        }
+      ]
+    },
+    {
+      "name": "游戏对战",
+      "url": "https://bbs.byr.cn/#!section/8",
+      "boards": [
+        {
+          "name": "地下城与勇士",
+          "url": "https://bbs.byr.cn/#!board/BUPTDNF"
+        },
+        {
+          "name": "反恐精英",
+          "url": "https://bbs.byr.cn/#!board/CStrike"
+        },
+        {
+          "name": "暗黑破坏神",
+          "url": "https://bbs.byr.cn/#!board/Diablo"
+        },
+        {
+          "name": "Dota",
+          "url": "https://bbs.byr.cn/#!board/Dota"
+        },
+        {
+          "name": "足球经理",
+          "url": "https://bbs.byr.cn/#!board/FootballManager"
+        },
+        {
+          "name": "炉石传说",
+          "url": "https://bbs.byr.cn/#!board/Hearthstone"
+        },
+        {
+          "name": "英雄联盟",
+          "url": "https://bbs.byr.cn/#!board/LOL"
+        },
+        {
+          "name": "网络游戏",
+          "url": "https://bbs.byr.cn/#!board/OnlineGame"
+        },
+        {
+          "name": "守望先锋",
+          "url": "https://bbs.byr.cn/#!board/OverWatch"
+        },
+        {
+          "name": "电脑游戏",
+          "url": "https://bbs.byr.cn/#!board/PCGame"
+        },
+        {
+          "name": "跑跑卡丁车",
+          "url": "https://bbs.byr.cn/#!board/PopKart"
+        },
+        {
+          "name": "绝地求生",
+          "url": "https://bbs.byr.cn/#!board/PUBG"
+        },
+        {
+          "name": "电子游戏",
+          "url": "https://bbs.byr.cn/#!board/TVGame"
+        },
+        {
+          "name": "实况足球",
+          "url": "https://bbs.byr.cn/#!board/WE"
+        },
+        {
+          "name": "魔兽世界",
+          "url": "https://bbs.byr.cn/#!board/WOW"
+        },
+        {
+          "name": "梦幻西游",
+          "url": "https://bbs.byr.cn/#!board/Xyq"
+        }
+      ]
+    },
+    {
+      "name": "乡亲乡爱",
+      "url": "https://bbs.byr.cn/#!section/9",
+      "boards": [
+        {
+          "name": "情淮徽皖·安徽",
+          "url": "https://bbs.byr.cn/#!board/Anhui"
+        },
+        {
+          "name": "粤广茶餐厅·广东",
+          "url": "https://bbs.byr.cn/#!board/Cantonese"
+        },
+        {
+          "name": "巴渝人家·重庆",
+          "url": "https://bbs.byr.cn/#!board/Chongqing"
+        },
+        {
+          "name": "八闽玲珑·福建",
+          "url": "https://bbs.byr.cn/#!board/Fujian"
+        },
+        {
+          "name": "西凉故道·甘肃",
+          "url": "https://bbs.byr.cn/#!board/Gansu"
+        },
+        {
+          "name": "桂香南疆·广西",
+          "url": "https://bbs.byr.cn/#!board/Guangxi"
+        },
+        {
+          "name": "景秀黔城·贵州",
+          "url": "https://bbs.byr.cn/#!board/Guizhou"
+        },
+        {
+          "name": "天涯海角·海南",
+          "url": "https://bbs.byr.cn/#!board/Hainan"
+        },
+        {
+          "name": "燕赵情怀·河北",
+          "url": "https://bbs.byr.cn/#!board/Hebei"
+        },
+        {
+          "name": "豫韵悠悠·河南",
+          "url": "https://bbs.byr.cn/#!board/Henan"
+        },
+        {
+          "name": "楚天邮情·湖北",
+          "url": "https://bbs.byr.cn/#!board/Hubei"
+        },
+        {
+          "name": "潇湘天下·湖南",
+          "url": "https://bbs.byr.cn/#!board/Hunan"
+        },
+        {
+          "name": "翱翔雄鹰·内蒙古",
+          "url": "https://bbs.byr.cn/#!board/InnerMongolia"
+        },
+        {
+          "name": "江淮人家·江苏",
+          "url": "https://bbs.byr.cn/#!board/Jiangsu"
+        },
+        {
+          "name": "江南西道·江西",
+          "url": "https://bbs.byr.cn/#!board/Jiangxi"
+        },
+        {
+          "name": "塞上江南·宁夏",
+          "url": "https://bbs.byr.cn/#!board/Ningxia"
+        },
+        {
+          "name": "东北一家人·东北",
+          "url": "https://bbs.byr.cn/#!board/NorthEast"
+        },
+        {
+          "name": "北京四合院·北京",
+          "url": "https://bbs.byr.cn/#!board/Peking"
+        },
+        {
+          "name": "青深似海·青海",
+          "url": "https://bbs.byr.cn/#!board/Qinghai"
+        },
+        {
+          "name": "三秦大地·陕西",
+          "url": "https://bbs.byr.cn/#!board/Shaanxi"
+        },
+        {
+          "name": "齐鲁大地·山东",
+          "url": "https://bbs.byr.cn/#!board/Shandong"
+        },
+        {
+          "name": "桐叶封晋·山西",
+          "url": "https://bbs.byr.cn/#!board/Shanxi"
+        },
+        {
+          "name": "蜀山邮侠·四川",
+          "url": "https://bbs.byr.cn/#!board/Sichuan"
+        },
+        {
+          "name": "九河下梢·天津",
+          "url": "https://bbs.byr.cn/#!board/Tianjin"
+        },
+        {
+          "name": "天山南北·新疆",
+          "url": "https://bbs.byr.cn/#!board/Xinjiang"
+        },
+        {
+          "name": "彩云之南·云南",
+          "url": "https://bbs.byr.cn/#!board/Yunnan"
+        },
+        {
+          "name": "钱塘人家·浙江",
+          "url": "https://bbs.byr.cn/#!board/Zhejiang"
+        }
+      ]
+    }
+  ]
+}

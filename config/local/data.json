@@ -1,0 +1,12 @@
+{
+  "description": "数据保存逻辑与路径配置，路径均相对于项目根目录",
+  "bbs_sections": {
+    "root": "data/bbs_sections",
+    "description": "版面内容保存地址，按 讨论区/子版面/日期 层级保存",
+    "structure": "讨论区/子版面/日期.json"
+  },
+  "bbs_info": {
+    "root": "data/bbs_info",
+    "description": "资料内容存放地址，用于用户自己加入的文件"
+  }
+}

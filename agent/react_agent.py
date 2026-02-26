@@ -9,7 +9,7 @@ from agent.tools.query_tools.query_tools import (
     query_board_posts,
     list_crawled_boards,
 )
-from agent.tools.init_tools.init_tools import run_bbs_init, run_full_init, is_initialized
+from agent.tools.init_tools.init_tools import run_bbs_init, start_browser, run_init, close_browser, is_initialized
 from utils.prompt_loader import load_system_prompts
 from model.factory import chat_model
 from langchain.agents import create_agent
@@ -22,7 +22,9 @@ class ReactAgent:
         """
         if auto_init and not is_initialized():
             try:
-                run_full_init(headless=True)
+                start_browser(debug=False)
+                run_init()
+                close_browser()
             except Exception as e:
                 # 初始化失败不阻塞 Agent 创建，仅依赖后续用户通过 run_bbs_init 再试
                 import warnings
@@ -52,5 +54,5 @@ class ReactAgent:
 if __name__ == '__main__':
     agent = ReactAgent()
 
-    for chunk in agent.execute_stream("我想了解有哪些关于职业选择的信息"):
+    for chunk in agent.execute_stream("就业信息有哪些？"):
         print(chunk, end="", flush=True)

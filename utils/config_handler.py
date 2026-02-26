@@ -38,9 +38,80 @@ def load_prompts_config(config_path: str = None, encoding: str = "utf-8") -> dic
     return _load_json(config_path, encoding)
 
 
-def get_crawled_config_path(path: str = "config/crawled/config.json") -> Path:
-    """获取爬取配置（登录页 id、版面地址等）的 JSON 路径，固定为 config/crawled/config.json。"""
-    return Path(get_abs_path(path))
+# ---------------------------------------------------------------------------
+# config/web_structure（保存路径由 save.json 定义）
+# ---------------------------------------------------------------------------
+
+def load_web_structure_save_config(encoding: str = "utf-8") -> dict:
+    """加载 config/web_structure/save.json，得到各保存路径（login_config, board, init_status_file 等）。"""
+    path = get_abs_path("config/web_structure/save.json")
+    if not os.path.exists(path):
+        return {
+            "login_config": "config/web_structure/config.json",
+            "board": "config/web_structure/board/board.json",
+            "init_status_file": "config/web_structure/init.json",
+        }
+    return _load_json(path, encoding)
+
+
+def get_web_structure_login_config_path() -> Path:
+    """登录页配置 JSON 路径（由 save.json 的 login_config 决定）。"""
+    cfg = load_web_structure_save_config()
+    return Path(get_abs_path(cfg.get("login_config", "config/web_structure/board/login_page.json")))
+
+
+def get_web_structure_board_path() -> Path:
+    """版面结构 JSON 路径（由 save.json 的 board 决定）。"""
+    cfg = load_web_structure_save_config()
+    return Path(get_abs_path(cfg.get("board", "config/web_structure/board/board.json")))
+
+
+def get_web_structure_init_status_path() -> Path:
+    """初始化状态 JSON 路径（由 save.json 的 init_status_file 决定）。"""
+    cfg = load_web_structure_save_config()
+    return Path(get_abs_path(cfg.get("init_status_file", "config/web_structure/init.json")))
+
+
+def get_web_structure_introductions_path() -> Path:
+    """版面置顶内容（介绍）根目录（由 save.json 的 introductions_root 决定）。介绍保存为 根目录/讨论区名称/版面名称/介绍[index].json"""
+    return get_web_structure_introductions_root()
+
+
+def get_web_structure_introductions_root() -> Path:
+    """介绍文件根目录，其下为 讨论区名称/版面名称/介绍0.json, 介绍1.json ..."""
+    cfg = load_web_structure_save_config()
+    return Path(get_abs_path(cfg.get("introductions_root", "config/web_structure/board"))).resolve()
+
+
+def load_web_structure_login_config(encoding: str = "utf-8") -> dict:
+    """读取登录页配置（login_page_url, username_input_id, password_input_id, login_button_id）。"""
+    path = get_web_structure_login_config_path()
+    return _load_json(str(path), encoding)
+
+
+def save_web_structure_login_config(new_values: dict, encoding: str = "utf-8") -> None:
+    """将登录页配置写入 save.json 中 login_config 指定的路径。"""
+    path = get_web_structure_login_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding=encoding) as f:
+        json.dump(new_values, f, ensure_ascii=False, indent=2)
+    print(f"配置已保存到: {path}")
+
+
+def load_web_structure_board_config(encoding: str = "utf-8") -> dict:
+    """读取版面结构（sections 等）。"""
+    path = get_web_structure_board_path()
+    return _load_json(str(path), encoding)
+
+
+# ---------------------------------------------------------------------------
+# config/websites（站点列表等）
+# ---------------------------------------------------------------------------
+
+def load_websites_config(config_path: str = None, encoding: str = "utf-8") -> dict:
+    """加载 config/websites 下的配置，默认 official_websites.json。"""
+    path = config_path or get_abs_path("config/websites/official_websites.json")
+    return _load_json(path, encoding)
 
 
 def get_rag_config_path(path: str = "config/prompts/rag.json") -> Path:
@@ -61,23 +132,6 @@ def load_chroma_config(path: str = "config/local/chroma.json", encoding: str = "
     return _load_json(str(path), encoding)
 
 
-def load_crawled_config(path: str = "config/crawled/config.json", encoding: str = "utf-8") -> dict:
-    """读取爬取配置（登录页 url、username_input_id、password_input_id、login_button_id 等）。"""
-    path = get_crawled_config_path(path)
-    return _load_json(str(path), encoding)
-
-
-def save_crawled_config(new_values: dict, path: str = "config/crawled/config.json", encoding: str = "utf-8") -> None:
-    """将新配置与已有爬取配置合并后写入 config/crawled/config.json。"""
-    path = get_crawled_config_path(path)
-    config = load_crawled_config(encoding=encoding)
-    config.update(new_values)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding=encoding) as f:
-        json.dump(config, f, ensure_ascii=False, indent=2)
-    print(f"配置已保存到: {path}")
-
-
 # 模块加载时读取的配置（供其他模块直接引用）
 driver_conf = load_driver_config()
 bbs_conf = load_bbs_config()
@@ -90,8 +144,8 @@ if __name__ == "__main__":
     print(driver_conf.get("Chrome_Path"))
     print(driver_conf.get("Chrome_Driver_Path"))
     print(bbs_conf.get("BBS_Url"))
-    print("crawled path:", get_crawled_config_path())
-    print("crawled config:", load_crawled_config())
+    print("web_structure login path:", get_web_structure_login_config_path())
+    print("web_structure login config:", load_web_structure_login_config())
     print("prompts config:", prompts_conf)
     print("rag config:", rag_conf)
     print("chroma config:", chroma_conf)
