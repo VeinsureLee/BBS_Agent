@@ -1,7 +1,0 @@
-{
-  "description": "初始化爬取结果的保存路径，均相对于项目根目录",
-  "login_config": "config/web_structure/config.json",
-  "board": "config/web_structure/board/board.json",
-  "posts_root": "config/web_structure/posts",
-  "init_status_file": "config/web_structure/init.json"
-}
