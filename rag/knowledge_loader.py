@@ -1,7 +1,9 @@
 """
 知识库文件与 MD5 记录读写，不依赖向量库。
-支持按 chroma 配置（info_path、section_info）递归列出文件并生成相对路径。
+支持按 chroma 配置（info_path、section_info）递归列出文件并生成相对路径；
+支持介绍（置顶）JSON 的列出与加载用于向量化。
 """
+import json
 import os
 import sys
 
@@ -97,3 +99,81 @@ def get_file_documents(read_path: str) -> list[Document]:
     if read_path.endswith("json"):
         return json_loader(read_path)
     return []
+
+
+INTRODUCTIONS_PREFIX = "introductions/"
+
+
+def list_introduction_files(introductions_root_abs: str) -> list[tuple[str, str]]:
+    """
+    递归列出介绍根目录下所有 介绍*.json 文件。
+    返回 [(绝对路径, rel_path), ...]，rel_path 形如 introductions/讨论区/版面/介绍0.json（用于向量库 source_file）。
+    """
+    result: list[tuple[str, str]] = []
+    root = introductions_root_abs.rstrip(os.sep)
+    if not os.path.isdir(root):
+        return result
+    for section_name in os.listdir(root):
+        section_dir = os.path.join(root, section_name)
+        if not os.path.isdir(section_dir):
+            continue
+        for board_name in os.listdir(section_dir):
+            board_dir = os.path.join(section_dir, board_name)
+            if not os.path.isdir(board_dir):
+                continue
+            for fname in os.listdir(board_dir):
+                if fname.endswith(".json") and "介绍" in fname:
+                    abs_path = os.path.join(board_dir, fname)
+                    if not os.path.isfile(abs_path):
+                        continue
+                    rel_path = f"{INTRODUCTIONS_PREFIX}{section_name}/{board_name}/{fname}"
+                    result.append((abs_path, rel_path))
+    return result
+
+
+def get_introduction_file_documents(abs_path: str, rel_path: str) -> list[Document]:
+    """
+    加载「介绍」JSON（置顶帖子格式：title, time, author, reply_count, url, floors）。
+    从 rel_path 解析 section/board：introductions/讨论区/版面/介绍0.json。
+    每个帖子生成一条 Document，内容为标题 + 各楼内容摘要。
+    """
+    parts = rel_path.replace("\\", "/").strip("/").split("/")
+    if len(parts) >= 3 and (parts[0] == "introductions" or rel_path.startswith(INTRODUCTIONS_PREFIX)):
+        section_name = parts[1]
+        board_name = parts[2]
+    else:
+        section_name = ""
+        board_name = ""
+    out = []
+    try:
+        with open(abs_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return out
+    title = data.get("title", "")
+    time_str = data.get("time", "")
+    author = data.get("author", "")
+    reply_count = data.get("reply_count", 0)
+    url = data.get("url", "")
+    floors = data.get("floors") or []
+    content_parts = [f"标题：{title} 作者：{author} 时间：{time_str} 回复数：{reply_count} 链接：{url}"]
+    for fl in floors:
+        c = (fl.get("content") or "").strip()
+        if c:
+            content_parts.append(c[:2000] if len(c) > 2000 else c)
+    content = "\n\n".join(content_parts)
+    if not content.strip():
+        return out
+    out.append(
+        Document(
+            page_content=content,
+            metadata={
+                "source_file": rel_path,
+                "section": section_name,
+                "board": board_name,
+                "title": title,
+                "reply_count": reply_count,
+            },
+        )
+    )
+    return out

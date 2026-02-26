@@ -20,11 +20,14 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from rag.knowledge_loader import (
     MD5_RECORD_SEP,
+    INTRODUCTIONS_PREFIX,
     norm_rel_path,
     load_recorded,
     save_recorded,
     get_file_documents,
     list_files_by_chroma_config,
+    list_introduction_files,
+    get_introduction_file_documents,
 )
 
 
@@ -151,6 +154,74 @@ class VectorStoreService:
 
         save_recorded(recorded, md5_store_path, MD5_RECORD_SEP)
 
+    def load_introductions(self, introductions_root: str = None) -> None:
+        """
+        将「介绍」目录下所有 介绍*.json 纳入向量库（MD5 增量：仅变更/新增的更新，已删除的移除）。
+        introductions_root 不传时从 chroma 配置的 introductions.path 或 config 的 get_web_structure_introductions_root 取得。
+        """
+        chroma_cfg = load_chroma_config()
+        md5_store_path = get_abs_path(chroma_cfg["md5_hex_store"])
+        if introductions_root is None:
+            intro_cfg = chroma_cfg.get("introductions") or {}
+            path_cfg = intro_cfg.get("path")
+            if path_cfg:
+                root_abs = get_abs_path(path_cfg)
+            else:
+                try:
+                    from utils.config_handler import get_web_structure_introductions_root
+                    root_abs = str(get_web_structure_introductions_root().resolve())
+                except Exception:
+                    logger.warning("[加载知识库]未配置 introductions 路径且无法读取 web_structure，跳过介绍向量化")
+                    return
+        else:
+            root_abs = os.path.abspath(introductions_root)
+        file_list = list_introduction_files(root_abs)
+        current: dict[str, str] = {}
+        for abs_path, rel_path in file_list:
+            md5_hex = get_file_md5_hex(abs_path)
+            if md5_hex is not None:
+                current[rel_path] = md5_hex
+        recorded = load_recorded(md5_store_path, MD5_RECORD_SEP)
+        for rel_path in list(recorded.keys()):
+            if rel_path.startswith(INTRODUCTIONS_PREFIX) and rel_path not in current:
+                logger.info(f"[加载知识库]介绍文件已删除或移出，移除向量: {rel_path}")
+                delete_vectors_by_source(self.vector_store, rel_path)
+                del recorded[rel_path]
+        for abs_path, rel_path in file_list:
+            md5_hex = current.get(rel_path)
+            if md5_hex is None:
+                continue
+            prev_md5 = recorded.get(rel_path)
+            if prev_md5 == md5_hex:
+                logger.debug(f"[加载知识库]{rel_path} 内容未变化，跳过")
+                continue
+            try:
+                if rel_path in recorded:
+                    logger.info(f"[加载知识库]{rel_path} 内容已变更，先删除旧向量再重新加载")
+                    delete_vectors_by_source(self.vector_store, rel_path)
+                documents = get_introduction_file_documents(abs_path, rel_path)
+                if not documents:
+                    logger.warning(f"[加载知识库]{rel_path} 内没有有效文本内容，跳过")
+                    recorded[rel_path] = md5_hex
+                    continue
+                for doc in documents:
+                    self._enrich_doc_metadata(doc, rel_path)
+                split_document = self.spliter.split_documents(documents)
+                if not split_document:
+                    logger.warning(f"[加载知识库]{rel_path} 分片后没有有效文本内容，跳过")
+                    recorded[rel_path] = md5_hex
+                    continue
+                for doc in split_document:
+                    if "source_file" not in doc.metadata:
+                        self._enrich_doc_metadata(doc, rel_path)
+                self.vector_store.add_documents(split_document)
+                recorded[rel_path] = md5_hex
+                logger.info(f"[加载知识库]{rel_path} 内容加载成功")
+            except Exception as e:
+                logger.error(f"[加载知识库]{rel_path} 加载失败：{str(e)}", exc_info=True)
+                raise
+        save_recorded(recorded, md5_store_path, MD5_RECORD_SEP)
+
 
 def force_rebuild_knowledge_base() -> None:
     """删除 chroma_db 与 md5 记录；调用方随后可再次执行 load_document 以全量重建。"""
@@ -172,6 +243,7 @@ if __name__ == "__main__":
         force_rebuild_knowledge_base()
     vs = VectorStoreService()
     vs.load_document()
+    vs.load_introductions()
     retriever = vs.get_retriever()
     query = "恋爱"
     res = retriever.invoke(query)

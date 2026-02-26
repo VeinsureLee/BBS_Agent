@@ -1,9 +1,11 @@
 """
-初始化工具：提供「启动浏览器」「初始化」「关闭浏览器」三个能力。
+初始化工具：提供「启动浏览器」「初始化」「向量库更新」「关闭浏览器」等能力。
 - 启动/关闭浏览器：供 main 或调用方使用，不暴露给 Agent。
 - 初始化：爬取登录框 -> 登录 -> 爬取版面 -> 爬取置顶，作为整体，使用当前已打开的 page；可由 Agent 通过 run_bbs_init 调用。
+- 向量库更新：将知识库配置中的文件与介绍（介绍*.json）写入向量库（MD5 增量）。
+- 仅向量化：不爬取，仅将已有介绍等内容写入向量库。
 
-同一浏览器实例内顺序：启动浏览器 -> 初始化（使用该 page）-> 关闭浏览器。
+同一浏览器实例内顺序：启动浏览器 -> 初始化（使用该 page）-> 向量库存储 -> 关闭浏览器。
 """
 import json
 from pathlib import Path
@@ -279,6 +281,49 @@ def run_single_board_init(
 
 
 # ---------------------------------------------------------------------------
+# 向量库更新（在初始化之后调用，或单独「仅向量化」）
+# ---------------------------------------------------------------------------
+
+
+def update_vector_store(debug: bool = False) -> dict:
+    """
+    更新向量库：先按 chroma 配置加载知识库文件（info_path、section_info），再加载介绍目录下 介绍*.json。
+    可在 run_init / run_single_board_init 之后调用，也可单独调用（仅向量化已有内容，不爬取）。
+    :return: {"loaded_document": True, "loaded_introductions": True, "message": "..."}
+    """
+    try:
+        from rag.vector_store import VectorStoreService
+        vs = VectorStoreService()
+        vs.load_document()
+        if debug:
+            print("[DEBUG] 知识库文件（info_path/section_info）已同步到向量库")
+        vs.load_introductions()
+        if debug:
+            print("[DEBUG] 介绍（介绍*.json）已同步到向量库")
+        return {
+            "loaded_document": True,
+            "loaded_introductions": True,
+            "message": "向量库已更新（知识库文件 + 介绍）。",
+        }
+    except Exception as e:
+        if debug:
+            print(f"[DEBUG] 向量库更新失败: {e}")
+        return {
+            "loaded_document": False,
+            "loaded_introductions": False,
+            "message": f"向量库更新失败: {e}",
+        }
+
+
+def run_vectorize_only(debug: bool = False) -> dict:
+    """
+    不爬取，仅将已有内容向量化：将 config 中知识库路径与介绍目录下的 介绍*.json 写入向量库。
+    无需启动浏览器，直接调用 update_vector_store。
+    """
+    return update_vector_store(debug=debug)
+
+
+# ---------------------------------------------------------------------------
 # 工具三：关闭浏览器（不暴露给 Agent）
 # ---------------------------------------------------------------------------
 
@@ -305,35 +350,36 @@ def _get_tool_run_bbs_init():
     from langchain_core.tools import tool
 
     @tool(
-        description="执行 BBS 初始化：爬取登录页配置、讨论区与版面结构、各版面置顶内容并保存到 config/web_structure。若当前未打开浏览器则会自动启动并完成后关闭；若已打开则复用当前页面。"
+        description="执行 BBS 初始化：爬取登录页配置、讨论区与版面结构、各版面置顶内容并保存到 config/web_structure，然后更新向量库。若当前未打开浏览器则会自动启动并完成后关闭；若已打开则复用当前页面。"
     )
     def run_bbs_init() -> str:
-        """执行 BBS 初始化（爬取登录框 -> 登录 -> 爬取版面 -> 爬取置顶）。"""
+        """执行 BBS 初始化（爬取登录框 -> 登录 -> 爬取版面 -> 爬取置顶 -> 向量库存储）。"""
         global _page
         try:
             if _page is None:
                 start_browser(debug=False)
                 try:
                     summary = run_init(debug=False)
+                    vec = update_vector_store(debug=False)
                 finally:
                     close_browser()
             else:
                 summary = run_init(debug=False)
-            if summary.get("skipped"):
-                msg = (
-                    "当前已初始化，未重复执行爬取。\n"
-                    f"登录页配置: {summary['login_config_path']}\n"
-                    f"版面配置: {summary['board_path']}\n"
-                    f"置顶内容: {summary.get('introductions_path', '')}"
-                )
-                return msg.strip()
-            return (
-                "BBS 初始化完成。\n"
+                vec = update_vector_store(debug=False)
+            base_msg = (
+                "当前已初始化，未重复执行爬取。\n" if summary.get("skipped") else "BBS 初始化完成。\n"
+            )
+            base_msg += (
                 f"登录页配置: {summary['login_config_path']}\n"
                 f"版面配置: {summary['board_path']}\n"
                 f"置顶内容: {summary.get('introductions_path', '')}\n"
-                "init.json 已更新为 init_status: true。"
             )
+            if summary.get("skipped"):
+                base_msg += f"向量库: {vec.get('message', '')}\n"
+            else:
+                base_msg += "init.json 已更新为 init_status: true。\n"
+                base_msg += f"向量库: {vec.get('message', '')}\n"
+            return base_msg.strip()
         except Exception as e:
             return f"初始化失败: {e}"
 
