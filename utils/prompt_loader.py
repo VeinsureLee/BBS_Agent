@@ -66,10 +66,12 @@ def load_prompt_generate():
 
 
 if __name__ == '__main__':
-    print(load_report_prompts())
+    print(load_system_prompts())
     print("="*20)
     print(load_rag_prompts())
     print("="*20)
-    print(load_system_prompts())
+    print(load_report_prompts())
+    print("="*20)
+    print(load_prompt_generate())
     print("="*20)
 

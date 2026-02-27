@@ -5,6 +5,11 @@ import functools
 import time
 from contextlib import contextmanager
 
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from utils.logger_handler import get_logger
 
 logger = get_logger("timer")
@@ -45,3 +50,18 @@ def timer(name: str):
     finally:
         elapsed = time.perf_counter() - start
         logger.info("【计时】%s 用时: %.2f 秒", display, elapsed)
+
+
+if __name__ == "__main__":
+    with timer("test"):
+        time.sleep(1)
+    print("-"*100)
+    @timed("test")
+    def test():
+        time.sleep(1)
+    test()
+    print("-"*100)
+    print(test.__name__)
+    print("-"*100)
+    print(test.__doc__)
+    print("-"*100)

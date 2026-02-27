@@ -65,9 +65,16 @@ if __name__ == "__main__":
     # 调试：加载 .env 并打印常用环境变量
     load_env()
     print("DEBUG:", is_debug_mode())
+    print("-"*100)
     name, pwd = get_bbs_credentials()
     print("BBS_Name:", name or "(未设置)")
+    print("-"*100)
     print("BBS_Password:", pwd or "(未设置)")
+    print("-"*100)
     print("get_env('DEBUG', '0'):", get_env("DEBUG", "0"))
+    print("-"*100)
     print("get_bool_env('DEBUG'):", get_bool_env("DEBUG"))
+    print("-"*100)
     print("DASHSCOPE_API_KEY:", get_api_key() or "(未设置)")
+    print("-"*100)
+    
