@@ -406,3 +406,32 @@ def _get_tool_run_bbs_init():
 
 
 run_bbs_init = _get_tool_run_bbs_init()
+
+
+# ---------------------------------------------------------------------------
+# 供 Agent 爬取前启动、爬取后关闭浏览器
+# ---------------------------------------------------------------------------
+
+
+def _get_tool_start_browser():
+    from langchain_core.tools import tool
+
+    @tool(description="启动浏览器并保持打开，用于后续爬取版面列表或帖子详情。爬取前若未打开浏览器可先调用此工具。")
+    def start_browser_tool(debug: bool = False) -> str:
+        return start_browser(debug=debug)
+
+    return start_browser_tool
+
+
+def _get_tool_close_browser():
+    from langchain_core.tools import tool
+
+    @tool(description="关闭当前已打开的浏览器。完成爬取后可调用此工具释放资源。")
+    def close_browser_tool() -> str:
+        return close_browser()
+
+    return close_browser_tool
+
+
+start_browser_tool = _get_tool_start_browser()
+close_browser_tool = _get_tool_close_browser()

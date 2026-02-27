@@ -5,11 +5,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.tools.middleware import monitor_tool, log_before_model, report_prompt_switch
 from agent.tools.query_tools.query_tools import (
+    bbs_structure_query,
+    bbs_introduction_query,
+    bbs_user_files_query,
     bbs_rag_query,
-    query_board_posts,
-    list_crawled_boards,
 )
-from agent.tools.init_tools.init_tools import run_bbs_init, start_browser, run_init, close_browser, is_initialized
+from agent.tools.init_tools.init_tools import (
+    run_bbs_init,
+    start_browser,
+    run_init,
+    close_browser,
+    is_initialized,
+    start_browser_tool,
+    close_browser_tool,
+)
+from agent.tools.search_tools.search_tools import crawl_board_pages, open_post_detail_and_save
 from utils.prompt_loader import load_system_prompts
 from model.factory import chat_model
 from langchain.agents import create_agent
@@ -33,7 +43,17 @@ class ReactAgent:
         self.agent = create_agent(
             model=chat_model,
             system_prompt=load_system_prompts(),
-            tools=[bbs_rag_query, query_board_posts, list_crawled_boards, run_bbs_init],
+            tools=[
+                bbs_structure_query,
+                bbs_introduction_query,
+                bbs_user_files_query,
+                bbs_rag_query,
+                run_bbs_init,
+                start_browser_tool,
+                close_browser_tool,
+                crawl_board_pages,
+                open_post_detail_and_save,
+            ],
             middleware=[monitor_tool, log_before_model, report_prompt_switch],
         )
 
@@ -54,5 +74,5 @@ class ReactAgent:
 if __name__ == '__main__':
     agent = ReactAgent()
 
-    for chunk in agent.execute_stream("就业信息有哪些？"):
+    for chunk in agent.execute_stream("有哪些关于就业的帖子信息？请爬取有关就业版面的帖子信息"):
         print(chunk, end="", flush=True)

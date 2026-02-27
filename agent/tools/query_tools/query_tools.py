@@ -1,21 +1,18 @@
 """
-BBS 查询工具：基于 data 下文档与爬取版面信息的查询。
-供 Agent 查询论坛知识库（RAG）与版面帖子列表。
+BBS 查询工具：基于 data 下文档与 config 下版面信息的查询。
+供 Agent 查询论坛知识库（RAG）、版面结构、版面介绍与用户资料。
 
-已有版面结构信息：
-1、未经向量化的版面结构信息：config/web_structure/board 目录下的介绍*.json
-2、经向量化后的版面结构信息：vector_db/chroma_db 目录下的知识库文件
-
-爬取的帖子信息：
-data/bbs_sections 目录下的版面 JSON 文件
-
-用户自带的资料文件：
-data/bbs_info 目录下的 PDF 文件，txt 文件，json 文件
+数据来源：
+- 版面结构：config/web_structure/board 目录下的 board.json（所属讨论区，名称，url）
+- 版面介绍：data/boards_guide 下各版面的 JSON（发言规则，帖子类型等）
+- 用户资料：data/bbs_info 目录下的 pdf、txt、json 文件
+- 知识库：vector_db/chroma_db 向量库，用于语义检索与总结
 
 模块功能：
-1、bbs_structure_query：查询版面结构信息，返回版面结构信息
-2、bbs_posts_query：查询帖子信息，返回帖子信息
-3、bbs_user_files_query：查询用户自带的资料文件，返回用户自带的资料文件
+1、bbs_structure_query：查询版面结构信息，返回版面结构信息（所属讨论区，名称，url）
+2、bbs_introduction_query：查询版面介绍信息，返回版面介绍信息（发言规则，帖子类型等）
+3、bbs_user_files_query：查询用户自带的资料文件，返回用户自带的资料文件（pdf，txt，json文件）
+4、bbs_rag_query：查询知识库，返回知识库信息（根据问题检索参考资料并总结回答，适用于论坛内容、版面讨论等语义查询）
 """
 import os
 import sys
@@ -25,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from utils.logger_handler import logger
 from utils.path_tool import get_abs_path
-from utils.config_handler import load_chroma_config
+from utils.config_handler import load_chroma_config, load_web_structure_board_config
 from utils import list_allowed_files_recursive
 from langchain_core.tools import tool
 
@@ -42,160 +39,150 @@ def _get_rag_service() -> RagSummarizeService:
     return _rag_service
 
 
-def _get_data_path() -> str:
-    """获取版面帖子 JSON 根目录：若 config/web_structure/save.json 存在且含 posts_root 则优先使用，否则用 chroma 的 data_path。"""
-    save_path = get_abs_path("config/web_structure/save.json")
-    if os.path.exists(save_path):
-        try:
-            with open(save_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            posts_root = data.get("posts_root", "").strip()
-            if posts_root:
-                return get_abs_path(posts_root)
-        except Exception:
-            pass
+def _get_boards_guide_root() -> str:
+    """返回 data/boards_guide 的绝对路径。"""
+    return get_abs_path("data/boards_guide")
+
+
+def _get_bbs_info_root() -> str:
+    """返回用户资料目录 data/bbs_info 的绝对路径（优先从 chroma 的 info_path 读取）。"""
     cfg = load_chroma_config()
-    return get_abs_path(cfg.get("data_path", "data"))
+    info_cfg = cfg.get("info_path") if isinstance(cfg.get("info_path"), dict) else None
+    if info_cfg and info_cfg.get("path"):
+        return get_abs_path(info_cfg["path"])
+    return get_abs_path("data/bbs_info")
 
 
-def _collect_board_json_paths() -> list[str]:
-    """收集 data 下所有版面爬取 JSON 路径。"""
-    data_abs = _get_data_path()
-    if not os.path.isdir(data_abs):
-        logger.warning(f"[query_tools] data 目录不存在: {data_abs}")
-        return []
-    return list_allowed_files_recursive(data_abs, (".json",))
+# ---------------------------------------------------------------------------
+# 1. 版面结构查询
+# ---------------------------------------------------------------------------
 
-
-def _load_board_file(filepath: str) -> dict | None:
-    """加载单份版面 JSON，返回 None 表示非版面格式或读取出错。"""
+@tool(description="查询 BBS 版面结构信息，返回讨论区与版面的所属关系、名称及 URL（所属讨论区，名称，url）")
+def bbs_structure_query(section_name: str = "") -> str:
+    """
+    从 config/web_structure/board 的 board.json 读取版面结构。
+    - section_name: 可选，仅返回该讨论区下的版面；留空则返回全部。
+    返回格式化的讨论区与版面列表（讨论区名、版面名、url）。
+    """
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        board_cfg = load_web_structure_board_config()
     except Exception as e:
-        logger.debug(f"[query_tools] 读取 {filepath} 失败: {e}")
-        return None
-    if not isinstance(data.get("posts"), list):
-        return None
-    return data
+        logger.warning(f"[query_tools] 读取版面结构失败: {e}")
+        return "当前无法读取版面结构（请先执行 BBS 初始化以生成 config/web_structure/board 下的配置）。"
 
+    sections = board_cfg.get("sections") or []
+    if not sections:
+        return "版面结构为空，请先执行 BBS 初始化。"
+
+    section_filter = (section_name or "").strip()
+    lines = ["【版面结构】讨论区 | 版面名称 | URL"]
+
+    for sec in sections:
+        sec_name = (sec.get("name") or "").strip() or "未命名讨论区"
+        if section_filter and sec_name != section_filter:
+            continue
+        sec_url = (sec.get("url") or "").strip()
+        boards = sec.get("boards") or []
+        for b in boards:
+            board_name = (b.get("name") or "").strip() or "未命名版面"
+            board_url = (b.get("url") or "").strip()
+            lines.append(f"  {sec_name} | {board_name} | {board_url}")
+        if not boards:
+            lines.append(f"  {sec_name} | （无下属版面） | {sec_url}")
+
+    if len(lines) == 1:
+        return "未找到符合条件的版面结构。"
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 2. 版面介绍查询
+# ---------------------------------------------------------------------------
+
+@tool(description="查询版面介绍信息，返回各版面的发言规则、帖子类型等（发言规则，帖子类型等）")
+def bbs_introduction_query(section_name: str = "", board_name: str = "") -> str:
+    """
+    从 data/boards_guide 下各版面的 JSON 读取介绍（发言规则、帖子类型）。
+    - section_name: 可选，按讨论区过滤。
+    - board_name: 可选，按版面名过滤。
+    留空表示不限制，返回全部版面介绍。
+    """
+    root = _get_boards_guide_root()
+    if not os.path.isdir(root):
+        logger.warning(f"[query_tools] 版面介绍目录不存在: {root}")
+        return "当前没有版面介绍数据（请先执行 BBS 初始化以生成 data/boards_guide）。"
+
+    section_filter = (section_name or "").strip()
+    board_filter = (board_name or "").strip()
+    lines = ["【版面介绍】讨论区 | 版面 | 发言规则 | 帖子类型"]
+
+    for sec_dir in os.listdir(root):
+        sec_path = os.path.join(root, sec_dir)
+        if not os.path.isdir(sec_path):
+            continue
+        for fname in os.listdir(sec_path):
+            if not fname.endswith(".json"):
+                continue
+            abs_path = os.path.join(sec_path, fname)
+            if not os.path.isfile(abs_path):
+                continue
+            try:
+                with open(abs_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception as e:
+                logger.debug(f"[query_tools] 读取 {abs_path} 失败: {e}")
+                continue
+            sec_label = (data.get("section_name") or "").strip() or sec_dir
+            board_label = (data.get("board_name") or "").strip() or fname.replace(".json", "")
+            if section_filter and sec_label != section_filter:
+                continue
+            if board_filter and board_label != board_filter:
+                continue
+            rules = (data.get("rules") or "").strip() or "常规发帖，需遵守版规。"
+            post_type = (data.get("post_type") or "").strip() or f"与「{board_label}」主题相关的讨论与信息。"
+            lines.append(f"  {sec_label} | {board_label} | {rules[:80]}{'…' if len(rules) > 80 else ''} | {post_type[:80]}{'…' if len(post_type) > 80 else ''}")
+
+    if len(lines) == 1:
+        return "未找到符合条件的版面介绍。"
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 3. 用户资料文件查询
+# ---------------------------------------------------------------------------
+
+@tool(description="查询用户自带的资料文件列表，返回 data/bbs_info 下的 pdf、txt、json 文件")
+def bbs_user_files_query() -> str:
+    """
+    列出用户资料目录（默认 data/bbs_info）下所有允许类型的文件（pdf、txt、json）。
+    返回文件相对路径列表，便于 Agent 了解用户已添加的资料。
+    """
+    root = _get_bbs_info_root()
+    if not os.path.isdir(root):
+        logger.warning(f"[query_tools] 用户资料目录不存在: {root}")
+        return "当前没有用户资料目录或目录为空（可将 pdf、txt、json 放入 data/bbs_info）。"
+
+    allowed = (".pdf", ".txt", ".json")
+    files = list_allowed_files_recursive(root, allowed)
+    if not files:
+        return "用户资料目录下暂无 pdf、txt、json 文件。"
+
+    data_abs = get_abs_path("data")
+    lines = ["【用户资料文件】"]
+    for path in sorted(files):
+        try:
+            rel = os.path.relpath(path, data_abs).replace("\\", "/")
+        except ValueError:
+            rel = path
+        lines.append(f"  - {rel}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 4. 知识库 RAG 查询
+# ---------------------------------------------------------------------------
 
 @tool(description="从 BBS 知识库（向量库）中根据问题检索参考资料并总结回答，适用于论坛内容、版面讨论等语义查询")
 def bbs_rag_query(query: str) -> str:
-    """基于 data 下已入库文档的 RAG 检索与总结。"""
+    """根据问题检索知识库并总结回答。"""
     return _get_rag_service().rag_summarize(query)
-
-
-@tool(
-    description="根据分区名、版面名、日期或标题关键词，从 data 下已爬取的版面 JSON 中查询帖子列表。"
-    " section/board/date 可留空表示不限制；keyword 为标题包含的关键词；max_posts 限制返回条数，默认 20。"
-)
-def query_board_posts(
-    section: str = "",
-    board: str = "",
-    date: str = "",
-    keyword: str = "",
-    max_posts: int = 20,
-) -> str:
-    """
-    从 data 下爬取的版面信息文件中查询帖子。
-    - section: 分区名（如「生活时尚」）
-    - board: 版面名（如「悄悄话」）
-    - date: 日期，格式 YYYY-MM-DD（如 2026-02-25）
-    - keyword: 标题包含的关键词
-    - max_posts: 最多返回帖子条数
-    返回格式化的帖子列表字符串，便于后续回答。
-    """
-    paths = _collect_board_json_paths()
-    if not paths:
-        return "当前没有可用的版面爬取数据（data 下未找到 JSON 文件）。"
-
-    section = (section or "").strip()
-    board = (board or "").strip()
-    date = (date or "").strip()
-    keyword = (keyword or "").strip()
-    max_posts = max(1, min(200, max_posts))
-
-    collected: list[dict] = []
-    data_abs = _get_data_path()
-
-    for path in paths:
-        rel = os.path.relpath(path, data_abs).replace("\\", "/")
-        # data/分区/版面/日期.json -> 用于过滤
-        parts = rel.replace(".json", "").split("/")
-        if len(parts) < 3:
-            continue
-        file_section, file_board, file_date = parts[0], parts[1], parts[2]
-        if section and file_section != section:
-            continue
-        if board and file_board != board:
-            continue
-        if date and file_date != date:
-            continue
-
-        data = _load_board_file(path)
-        if not data:
-            continue
-        posts = data.get("posts") or []
-        for p in posts:
-            title = (p.get("title") or "").strip()
-            if keyword and keyword not in title:
-                continue
-            collected.append({
-                "section": file_section,
-                "board": file_board,
-                "date": file_date,
-                "title": title,
-                "author": p.get("author", ""),
-                "time": p.get("time", ""),
-                "reply_count": p.get("reply_count", 0),
-                "url": p.get("url", ""),
-            })
-        if len(collected) >= max_posts:
-            break
-
-    collected = collected[:max_posts]
-    if not collected:
-        return "未找到符合条件的帖子。可尝试放宽分区、版面、日期或关键词条件，或先调用 list_crawled_boards 查看已有数据。"
-
-    lines = []
-    for i, p in enumerate(collected, 1):
-        lines.append(
-            f"{i}. 【{p['section']} / {p['board']}】{p['date']} | {p['title']} | 作者:{p['author']} 回复:{p['reply_count']} 链接:{p['url']}"
-        )
-    return "\n".join(lines)
-
-
-@tool(description="列出 data 下已爬取的分区与版面列表，以及各版面下已有日期样例，便于后续按分区/版面/日期查询")
-def list_crawled_boards() -> str:
-    """列出当前 data 下已爬取的版面信息对应的分区、版面及日期。"""
-    paths = _collect_board_json_paths()
-    if not paths:
-        return "当前没有可用的版面爬取数据（data 下未找到 JSON 文件）。"
-
-    data_abs = _get_data_path()
-    # rel_path: data/分区/版面/日期.json
-    section_board_dates: dict[tuple[str, str], list[str]] = {}
-
-    for path in paths:
-        rel = os.path.relpath(path, data_abs).replace("\\", "/")
-        parts = rel.replace(".json", "").split("/")
-        if len(parts) < 3:
-            continue
-        sec, bd, dt = parts[0], parts[1], parts[2]
-        key = (sec, bd)
-        if key not in section_board_dates:
-            section_board_dates[key] = []
-        if dt not in section_board_dates[key]:
-            section_board_dates[key].append(dt)
-
-    for k in section_board_dates:
-        section_board_dates[k].sort()
-
-    lines = ["已爬取版面（分区 / 版面 -> 日期列表）："]
-    for (sec, bd), dates in sorted(section_board_dates.items()):
-        sample = ", ".join(dates[:5])
-        if len(dates) > 5:
-            sample += f" 等共 {len(dates)} 天"
-        lines.append(f"  - {sec} / {bd}: {sample}")
-    return "\n".join(lines)

@@ -3,7 +3,7 @@
 ## 数据来源与层级
 
 - **版面结构**：来自初始化（config/web_structure），层级为 讨论区 → 子版面/子讨论区（boards）。
-- **版面内容**：来自 data/bbs_sections，按 **讨论区/子版面/日期** 保存的 JSON；用户自行添加的资料在 data/bbs_info。
+- **版面内容**：来自 data/bbs_sections，按 **讨论区/子版面/日期** 保存的 JSON；**帖子详情**来自 data/post_details（由 open_post_detail_and_save 爬取保存）；用户自行添加的资料在 data/bbs_info。
 - **知识库**：向量库中的 BBS 相关内容，用于语义检索与总结。
 
 ## 可用工具（与主流程一致）
