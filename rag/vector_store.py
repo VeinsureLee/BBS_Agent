@@ -407,7 +407,7 @@ if __name__ == "__main__":
         force_rebuild_knowledge_base()
     vs = VectorStoreService()
     vs.load_document()
-    vs.load_introductions()
+    vs.load_board_guide()
     retriever = vs.get_retriever()
     query = "恋爱"
     res = retriever.invoke(query)

@@ -59,25 +59,69 @@ def _get_introductions_path() -> Path:
     return get_web_structure_introductions_path().resolve()
 
 
-def _set_init_status(success: bool) -> None:
-    """初始化成功后更新 init.json。"""
-    path = _get_init_status_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump({"init_status": success}, f, ensure_ascii=False, indent=2)
+# init.json 中各子状态键名（与 config 一致）
+INIT_STATUS_KEYS = (
+    "init_status",
+    "login_status",       # 登录状态：是否抓取登录各窗口
+    "board_status",       # 爬取状态：是否爬取讨论区与版面
+    "board_top_status",   # 是否爬取置顶
+    "prompts_status",     # 提示词生成状态：是否生成提示词
+    "vector_store_status", # 向量库储存：是否按当前规则储存
+)
 
 
-def is_initialized() -> bool:
-    """检查 config/web_structure/init.json 中 init_status 是否为 True。"""
+def _load_init_status_data() -> dict:
+    """读取 init.json，返回各状态字段，缺失则默认为 False。"""
     path = _get_init_status_path()
+    default = {k: False for k in INIT_STATUS_KEYS}
     if not path.exists():
-        return False
+        return default
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("init_status") is True
+        for k in INIT_STATUS_KEYS:
+            if k in data:
+                default[k] = data[k] is True
+        return default
     except Exception:
-        return False
+        return default
+
+
+def _set_init_status(success: bool) -> None:
+    """初始化完成后更新 init.json：成功则写 init_status 与爬取相关子状态为 True，保留 vector_store_status；失败则全部置 False。"""
+    path = _get_init_status_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    current = _load_init_status_data()
+    if success:
+        data = {
+            "init_status": True,
+            "login_status": True,
+            "board_status": True,
+            "board_top_status": True,
+            "prompts_status": True,
+            "vector_store_status": current.get("vector_store_status", False),
+        }
+    else:
+        data = {k: False for k in INIT_STATUS_KEYS}
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _update_init_status_fields(updates: dict) -> None:
+    """仅更新 init.json 中指定字段，其余保留。"""
+    path = _get_init_status_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = _load_init_status_data()
+    for k, v in updates.items():
+        if k in INIT_STATUS_KEYS:
+            data[k] = bool(v)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def is_initialized() -> bool:
+    """检查 config/web_structure/init.json 中 init_status 是否为 True；为 True 时整体视为已初始化并跳过。"""
+    return _load_init_status_data().get("init_status") is True
 
 
 # ---------------------------------------------------------------------------
@@ -87,9 +131,10 @@ def is_initialized() -> bool:
 
 def run_init(debug: bool = False) -> dict:
     """
-    使用当前已打开的 page 执行完整初始化：登录 -> 爬取讨论区与版面 -> 爬取置顶 -> 生成版面/讨论区提示词 -> 按讨论区/版面说明与置顶内容存向量库。
+    使用当前已打开的 page 执行完整初始化：登录 -> 爬取讨论区与版面 -> 爬取置顶 -> 生成版面/讨论区提示词。
     必须先调用 start_browser()，否则抛出 RuntimeError。
     若已初始化（init.json 中 init_status 为 True），则跳过爬取并直接返回路径信息。
+    未完全初始化时按 init.json 中的 login_status / board_status / board_top_status / prompts_status 跳过已完成步骤。
     """
     _page = get_page()
     if _page is None:
@@ -113,52 +158,77 @@ def run_init(debug: bool = False) -> dict:
     login_config_path = _get_login_config_path()
     board_path = _get_board_path()
     introductions_path = _get_introductions_path()
+    status = _load_init_status_data()
 
     try:
-        # 1. 爬取登录页并保存
-        login_result = crawl_login_page(_page, BBS_Url, debug=debug)
-        login_config_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(login_config_path, "w", encoding="utf-8") as f:
-            json.dump(login_result, f, ensure_ascii=False, indent=2)
-        if debug:
-            print("[DEBUG] 登录配置已保存到:", login_config_path)
-
-        # 2. 登录
-        do_login(
-            _page,
-            login_result["login_page_url"],
-            login_result["username_input_id"],
-            login_result["password_input_id"],
-            login_result["login_button_id"],
-            debug=debug,
-        )
-
-        # 3. board_tools：爬取页面结构并计时，保存到 board_path
-        if debug:
-            print("[DEBUG] 版面结构爬取（board_tools）:")
-        board_path.parent.mkdir(parents=True, exist_ok=True)
-        sections = crawl_sections_and_boards(_page, BBS_Url, section_count=SECTION_COUNT, debug=debug)
-        with open(board_path, "w", encoding="utf-8") as f:
-            json.dump({"sections": sections}, f, ensure_ascii=False, indent=2)
-        if debug:
-            print("[DEBUG] 版面配置已保存到:", board_path)
-
-        # 4. introduction tools：爬取置顶信息，每爬完一个讨论区下的版面就保存（含计时）
-        if debug:
-            print("[DEBUG] 置顶内容爬取（introduction tools），每区保存:")
-        sections_with_intros = []
-        for sec in sections:
-            with timer(f"置顶-讨论区 {sec.get('name', '')}"):
-                sec_with_intros = crawl_one_section_introductions(
-                    _page, sec, BBS_Url, debug=debug, fetch_article_detail=True
+        # 1. 登录状态：是否抓取登录各窗口
+        if not status.get("login_status"):
+            login_result = crawl_login_page(_page, BBS_Url, debug=debug)
+            login_config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(login_config_path, "w", encoding="utf-8") as f:
+                json.dump(login_result, f, ensure_ascii=False, indent=2)
+            if debug:
+                print("[DEBUG] 登录配置已保存到:", login_config_path)
+            do_login(
+                _page,
+                login_result["login_page_url"],
+                login_result["username_input_id"],
+                login_result["password_input_id"],
+                login_result["login_button_id"],
+                debug=debug,
+            )
+            _update_init_status_fields({"login_status": True})
+        else:
+            # 已抓过登录配置，仍需登录当前浏览器
+            login_cfg = load_web_structure_login_config()
+            if login_cfg.get("login_page_url"):
+                do_login(
+                    _page,
+                    login_cfg["login_page_url"],
+                    login_cfg.get("username_input_id", "id"),
+                    login_cfg.get("password_input_id", "pwd"),
+                    login_cfg.get("login_button_id", "b_login"),
+                    debug=debug,
                 )
-                sections_with_intros.append(sec_with_intros)
-                save_introductions(sections_with_intros, only_last_section=True)
-                if debug:
-                    print("  [DEBUG] 已保存讨论区", sec_with_intros.get("name", ""), "->", introductions_path)
 
-        # 5. 根据爬取内容生成讨论区/版面说明并保存到 data/boards_guide
-        generate_and_save_boards_prompt(debug=debug)
+        # 2. 爬取状态：是否爬取讨论区与版面
+        if not status.get("board_status"):
+            if debug:
+                print("[DEBUG] 版面结构爬取（board_tools）:")
+            board_path.parent.mkdir(parents=True, exist_ok=True)
+            sections = crawl_sections_and_boards(_page, BBS_Url, section_count=SECTION_COUNT, debug=debug)
+            with open(board_path, "w", encoding="utf-8") as f:
+                json.dump({"sections": sections}, f, ensure_ascii=False, indent=2)
+            if debug:
+                print("[DEBUG] 版面配置已保存到:", board_path)
+            _update_init_status_fields({"board_status": True})
+        else:
+            board_cfg = load_web_structure_board_config()
+            sections = board_cfg.get("sections", [])
+
+        # 3. 是否爬取置顶
+        if not status.get("board_top_status"):
+            if debug:
+                print("[DEBUG] 置顶内容爬取（introduction tools），每区保存:")
+            sections_with_intros = []
+            for sec in sections:
+                with timer(f"置顶-讨论区 {sec.get('name', '')}"):
+                    sec_with_intros = crawl_one_section_introductions(
+                        _page, sec, BBS_Url, debug=debug, fetch_article_detail=True
+                    )
+                    sections_with_intros.append(sec_with_intros)
+                    save_introductions(sections_with_intros, only_last_section=True)
+                    if debug:
+                        print("  [DEBUG] 已保存讨论区", sec_with_intros.get("name", ""), "->", introductions_path)
+            _update_init_status_fields({"board_top_status": True})
+        else:
+            # 置顶已爬过，需 sections 用于后续提示词（若未生成）
+            sections_with_intros = []  # 仅 prompts 可能用到 board 结构，此处不重读 introductions
+
+        # 4. 提示词生成状态：是否生成提示词
+        if not status.get("prompts_status"):
+            generate_and_save_boards_prompt(debug=debug)
+            _update_init_status_fields({"prompts_status": True})
 
         _set_init_status(True)
         return {
@@ -255,6 +325,7 @@ def update_vector_store(debug: bool = False) -> dict:
     """
     更新向量库：加载知识库文件与 data/boards_guide 下各版面向量化说明，不写入置顶帖子全文，避免冗余。
     可在 run_init / run_single_board_init 之后调用，也可单独调用（仅向量化已有内容，不爬取）。
+    成功后会将 init.json 中 vector_store_status 置为 True。
     :return: {"loaded_document": True, "loaded_board_guide": True, "message": "..."}
     """
     try:
@@ -266,6 +337,7 @@ def update_vector_store(debug: bool = False) -> dict:
         vs.load_board_guide()
         if debug:
             print("[DEBUG] 讨论区/版面说明（data/boards_guide）已同步到向量库")
+        _update_init_status_fields({"vector_store_status": True})
         return {
             "loaded_document": True,
             "loaded_board_guide": True,
