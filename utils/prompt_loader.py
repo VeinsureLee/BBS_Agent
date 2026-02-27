@@ -50,6 +50,21 @@ def load_report_prompts():
         raise e
 
 
+def load_prompt_generate():
+    """加载版面说明生成用提示词模板（prompts/prompt_generate.txt），用于模型生成发言规则与帖子类型。"""
+    try:
+        prompt_generate_path = get_abs_path(prompts_conf["prompt_generate_path"])
+    except KeyError as e:
+        logger.error(f"[load_prompt_generate]配置项中没有 prompt_generate_path")
+        raise e
+
+    try:
+        return open(prompt_generate_path, "r", encoding="utf-8").read()
+    except Exception as e:
+        logger.error(f"[load_prompt_generate]解析版面说明生成提示词出错，{str(e)}")
+        raise e
+
+
 if __name__ == '__main__':
     print(load_report_prompts())
     print("="*20)

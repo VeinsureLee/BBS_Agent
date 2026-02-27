@@ -1,6 +1,21 @@
 """
 BBS 查询工具：基于 data 下文档与爬取版面信息的查询。
 供 Agent 查询论坛知识库（RAG）与版面帖子列表。
+
+已有版面结构信息：
+1、未经向量化的版面结构信息：config/web_structure/board 目录下的介绍*.json
+2、经向量化后的版面结构信息：vector_db/chroma_db 目录下的知识库文件
+
+爬取的帖子信息：
+data/bbs_sections 目录下的版面 JSON 文件
+
+用户自带的资料文件：
+data/bbs_info 目录下的 PDF 文件，txt 文件，json 文件
+
+模块功能：
+1、bbs_structure_query：查询版面结构信息，返回版面结构信息
+2、bbs_posts_query：查询帖子信息，返回帖子信息
+3、bbs_user_files_query：查询用户自带的资料文件，返回用户自带的资料文件
 """
 import os
 import sys
