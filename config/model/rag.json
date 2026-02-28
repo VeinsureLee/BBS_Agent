@@ -1,5 +1,9 @@
 {
-    "description": "RAG模型配置",
-    "chat_model_name": "qwen3-max",
-    "embedding_model_name": "text-embedding-v4"
+  "description": "RAG模型配置。use_local_* 为 true 时用本地模型，否则用云端 DashScope。local_chat_model：Ollama 模型名(如 qwen2.5:7b) 或本地目录(ModelScope/HuggingFace 缓存路径)。local_embed_model：HuggingFace repo id 或本地 snapshot 目录。",
+  "chat_model_name": "qwen3-max",
+  "embedding_model_name": "text-embedding-v4",
+  "use_local_chat": false,
+  "use_local_embed": false,
+  "local_chat_model": "C:\\Users\\35186\\.cache\\modelscope\\hub\\models\\qwen\\Qwen2.5-7B-Instruct",
+  "local_embed_model": "shibing624/text2vec-base-chinese"
 }
