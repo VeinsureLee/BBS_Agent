@@ -1,0 +1,12 @@
+{
+    "description": "官方网站",
+    "sites": [
+        {
+            "id": "official_website",
+            "name": "北京邮电大学官方网站",
+            "base_url": "https://www.bupt.edu.cn/",
+            "description": "北京邮电大学官方网站",
+            "no_login": true
+        }
+    ]
+}

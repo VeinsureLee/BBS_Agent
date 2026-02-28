@@ -1,4 +1,5 @@
 {
+  "description": "浏览器驱动配置",
   "Chrome_Path": "D:\\chrome144\\chrome-win64\\chrome.exe",
   "Chrome_Driver_Path": "D:\\chrome144\\chromedriver-win64\\chromedriver.exe"
 }

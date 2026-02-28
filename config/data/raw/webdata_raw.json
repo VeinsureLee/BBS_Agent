@@ -1,0 +1,7 @@
+{
+    "description": "爬取数据配置",
+    "data_path": "data/raw/webdata_raw",
+    "data_type": [
+        "html"
+    ]
+}

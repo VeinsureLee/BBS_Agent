@@ -1,0 +1,7 @@
+{
+    "description": "处理后的数据配置",
+    "data_path": "data/processed/webdata_cleaned",
+    "data_type": [
+        "json"
+    ]
+}

@@ -22,7 +22,6 @@ from utils.config_handler import (
     get_web_structure_introductions_path,
 )
 from agent.tools.init_tools.browser_tools import start_browser, close_browser, get_page
-from agent.tools.init_tools.login_tools import crawl_login_page, do_login
 from agent.tools.init_tools.board_tools import (
     crawl_sections_and_boards,
     SECTION_COUNT,
@@ -161,35 +160,11 @@ def run_init(debug: bool = False) -> dict:
     status = _load_init_status_data()
 
     try:
-        # 1. 登录状态：是否抓取登录各窗口
+        # 1. 登录（使用 infrastructure.browser_manager.login，配置与保存走 utils）
+        from infrastructure.browser_manager.login import run_login
+        run_login(debug=debug, force_crawl=not status.get("login_status"))
         if not status.get("login_status"):
-            login_result = crawl_login_page(_page, BBS_Url, debug=debug)
-            login_config_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(login_config_path, "w", encoding="utf-8") as f:
-                json.dump(login_result, f, ensure_ascii=False, indent=2)
-            if debug:
-                print("[DEBUG] 登录配置已保存到:", login_config_path)
-            do_login(
-                _page,
-                login_result["login_page_url"],
-                login_result["username_input_id"],
-                login_result["password_input_id"],
-                login_result["login_button_id"],
-                debug=debug,
-            )
             _update_init_status_fields({"login_status": True})
-        else:
-            # 已抓过登录配置，仍需登录当前浏览器
-            login_cfg = load_web_structure_login_config()
-            if login_cfg.get("login_page_url"):
-                do_login(
-                    _page,
-                    login_cfg["login_page_url"],
-                    login_cfg.get("username_input_id", "id"),
-                    login_cfg.get("password_input_id", "pwd"),
-                    login_cfg.get("login_button_id", "b_login"),
-                    debug=debug,
-                )
 
         # 2. 爬取状态：是否爬取讨论区与版面
         if not status.get("board_status"):
@@ -271,14 +246,8 @@ def run_single_board_init(
     login_cfg = load_web_structure_login_config()
     if not login_cfg.get("login_page_url"):
         raise ValueError("未找到登录配置，请先执行一次全量初始化以生成 login 配置")
-    do_login(
-        get_page(),
-        login_cfg["login_page_url"],
-        login_cfg.get("username_input_id", "id"),
-        login_cfg.get("password_input_id", "pwd"),
-        login_cfg.get("login_button_id", "b_login"),
-        debug=debug,
-    )
+    from infrastructure.browser_manager.login import run_login
+    run_login(debug=debug, force_crawl=False)
 
     request_url = board_url_to_request_url(board_url, BBS_Url)
     introductions = crawl_board_introductions(
