@@ -3,9 +3,12 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config_handler import prompts_conf
+from utils.config_handler import load_json_config
 from utils.path_tool import get_abs_path
 from utils.logger_handler import logger
+
+# 提示词路径配置（config/prompts/prompts.json）
+prompts_conf = load_json_config(default_path="config/prompts/prompts.json")
 
 
 def load_system_prompts():

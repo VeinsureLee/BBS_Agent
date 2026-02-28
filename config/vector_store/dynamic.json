@@ -1,0 +1,30 @@
+{
+  "description": "动态知识库配置（用户会话、实时内容等可变数据）",
+  "collection_name": "bbs_dynamic_knowledge",
+  "persist_directory": "vector_db/dynamic",
+  "k": 10,
+  "data_path": "data",
+  "raw_data_path": {
+    "description": "原信息，未进行处理",
+    "path": "data/raw/webdata",
+    "file_type": ["pdf", "txt", "json"],
+    "hierarchy": true
+  },
+  "processed_data_path": {
+    "description": "处理后的信息",
+    "path": "data/processed/webdata",
+    "file_type": "json",
+    "hierarchy": true
+  },
+  "derived_data_path":{
+    "description": "派生类信息",
+    "path": "data/derived/webdata",
+    "file_type": "json",
+    "hierarchy": true
+  },
+  "md5_hex_store": "vector_db/dynamic/md5.text",
+  "allow_knowledge_file_type": ["txt", "pdf", "json"],
+  "chunk_size": 500,
+  "chunk_overlap": 50,
+  "separators": ["\n\n", "\n", ".", "!", "?", "。", "！", "？", " ", ""]
+}

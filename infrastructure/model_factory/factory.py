@@ -9,7 +9,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_community.chat_models.tongyi import BaseChatModel
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_community.chat_models.tongyi import ChatTongyi
-from utils.config_handler import load_rag_config
+from utils.config_handler import load_json_config
 from utils.env_handler import load_env
 
 # 从 .env 加载环境变量（含 DASHSCOPE_API_KEY），供 ChatTongyi / DashScopeEmbeddings 使用
@@ -24,12 +24,12 @@ class BaseModelFactory(ABC):
 
 class ChatModelFactory(BaseModelFactory):
     def generator(self) -> Optional[Embeddings | BaseChatModel]:
-        return ChatTongyi(model=load_rag_config()["chat_model_name"])
+        return ChatTongyi(model=load_json_config(default_path="config/model/rag.json")["chat_model_name"])
 
 
 class EmbeddingsFactory(BaseModelFactory):
     def generator(self) -> Optional[Embeddings | BaseChatModel]:
-        return DashScopeEmbeddings(model=load_rag_config()["embedding_model_name"])
+        return DashScopeEmbeddings(model=load_json_config(default_path="config/model/rag.json")["embedding_model_name"])
 
 
 chat_model = ChatModelFactory().generator()

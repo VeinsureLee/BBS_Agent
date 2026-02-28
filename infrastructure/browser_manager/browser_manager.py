@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import threading
 from playwright.sync_api import sync_playwright
 
-from utils.config_handler import get_bbs_url, driver_conf
+from utils.config_handler import load_json_config
 from utils.logger_handler import get_logger
 
 
@@ -61,6 +61,7 @@ class GlobalBrowser:
         }
         if self.proxy:
             launch_args["proxy"] = self.proxy
+        driver_conf = load_json_config(default_path="config/driver/driver.json")
         chrome_path = driver_conf.get("Chrome_Path")
         if chrome_path:
             launch_args["executable_path"] = chrome_path

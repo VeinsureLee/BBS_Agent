@@ -1,0 +1,24 @@
+{
+  "description": "静态知识库配置（站点结构等相对固定的数据）",
+  "collection_name": "bbs_static_knowledge",
+  "persist_directory": "vector_db/static",
+  "k": 10,
+  "data_path": "data",
+  "raw_data_path": {
+    "description": "原信息，未进行处理",
+    "path": "data/raw/web_structure",
+    "file_type": ["pdf", "txt", "json"],
+    "hierarchy": true
+  },
+  "derived_data_path": {
+    "description": "派生类信息",
+    "path": "data/processed/webdata",
+    "file_type": "json",
+    "hierarchy": true
+  },
+  "md5_hex_store": "vector_db/static/md5.text",
+  "allow_knowledge_file_type": ["txt", "pdf", "json"],
+  "chunk_size": 500,
+  "chunk_overlap": 50,
+  "separators": ["\n\n", "\n", ".", "!", "?", "。", "！", "？", " ", ""]
+}

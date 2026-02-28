@@ -7,7 +7,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.config_handler import get_bbs_url
+from utils.config_handler import load_config
 from utils.env_handler import load_env, get_bbs_credentials
 from utils.path_tool import get_abs_path
 
@@ -20,7 +20,8 @@ def main():
     load_env()
 
     # 从 config 读取 BBS 首页 URL
-    home_url = get_bbs_url()
+    bbs_cfg = load_config()
+    home_url = (bbs_cfg.get("BBS_Url") or "").strip().rstrip("/")
     if not home_url:
         print("未配置 BBS_Url，退出")
         return
@@ -49,7 +50,7 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"首页内容已保存到: {out_path}")
+    browser.logger.info(f"首页内容已保存到: {out_path}")
 
     browser.close()
 

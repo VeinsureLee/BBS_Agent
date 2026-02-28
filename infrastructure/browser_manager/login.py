@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.config_handler import get_bbs_url, load_login_config
+from utils.config_handler import load_config, load_json_config
 
 
 def login(browser, username: str, password: str) -> bool:
@@ -17,8 +17,10 @@ def login(browser, username: str, password: str) -> bool:
     :param password: 密码
     :return: 是否执行了登录操作（未填账号时跳过点击）
     """
-    conf = load_login_config()
-    login_url = (conf.get("login_page_url") or "").strip() or get_bbs_url()
+    conf = load_json_config(default_path="config/data/login_structure.json")
+    bbs_cfg = load_config()
+    bbs_url = (bbs_cfg.get("BBS_Url") or "").strip().rstrip("/")
+    login_url = (conf.get("login_page_url") or "").strip() or bbs_url
     username_id = (conf.get("username_input_id") or "id").strip()
     password_id = (conf.get("password_input_id") or "pwd").strip()
     button_id = (conf.get("login_button_id") or "b_login").strip()
