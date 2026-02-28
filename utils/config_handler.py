@@ -81,6 +81,12 @@ def load_webdata_raw_config(config_path: str | None = None, encoding: str = "utf
     return _load_json(path, encoding)
 
 
+def load_login_config(config_path: str | None = None, encoding: str = "utf-8") -> dict:
+    """加载 config/data/login_structure.json（登录页 URL、表单项 id 等）。"""
+    path = config_path or get_abs_path("config/data/login_structure.json")
+    return _load_json(path, encoding)
+
+
 # 模块加载时读取的配置（供其他模块直接引用）
 driver_conf = load_driver_config()
 bbs_conf = load_bbs_config()

@@ -9,6 +9,7 @@ from .config_handler import (
     get_chroma_config_path,
     load_chroma_config,
     load_webdata_raw_config,
+    load_login_config,
 )
 from .env_handler import (
     load_env,
@@ -45,6 +46,7 @@ __all__ = [
     "get_chroma_config_path",
     "load_webdata_raw_config",
     "load_websites_config",
+    "load_login_config",
     "load_env",
     "get_env",
     "get_bool_env",
