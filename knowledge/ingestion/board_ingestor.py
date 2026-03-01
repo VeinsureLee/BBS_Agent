@@ -214,6 +214,68 @@ def parse_pinned_from_tr(tr_html: str) -> dict | None:
     return {"title": title, "url": href, "time": post_time, "author": author}
 
 
+def parse_board_row_from_tr(tr_html: str) -> dict | None:
+    """
+    从版面列表的任意一行 tr（置顶或普通帖）解析：标题、链接、日期、作者。
+    与 parse_pinned_from_tr 结构一致，但不要求 tr 带 .top 类。
+    """
+    soup = BeautifulSoup(tr_html, "html.parser")
+    tr = soup.find("tr")
+    root = tr if tr else soup
+    if not root:
+        return None
+    tds = root.find_all("td")
+    if len(tds) < 4:
+        return None
+    title_a = root.select_one("td.title_9 a[href^='/article/']")
+    if not title_a:
+        title_a = root.select_one("a[href^='/article/']")
+    if not title_a:
+        return None
+    href = (title_a.get("href") or "").strip()
+    if "?" in href:
+        href = href.split("?")[0]
+    title = (title_a.get_text(strip=True) or "").strip()
+    date_cell = root.select_one("td.title_10")
+    if not date_cell:
+        date_cell = tds[2] if len(tds) > 2 else None
+    post_time = (date_cell.get_text(strip=True) or "").strip() if date_cell else ""
+    author_cell = root.select_one("td.title_12 a")
+    if not author_cell:
+        for td in tds:
+            a = td.find("a", href=re.compile(r"/user/query/"))
+            if a:
+                author_cell = a
+                break
+    author = (author_cell.get_text(strip=True) or "").strip() if author_cell else ""
+    return {"title": title, "url": href, "time": post_time, "author": author}
+
+
+async def crawl_board_posts(browser, base_url: str, board_id: str, page: int = 1) -> list:
+    """
+    异步爬取某版面指定页的所有帖子列表（置顶+普通帖），仅结构信息：标题、链接、日期、作者。
+    :param page: 页码，1 为首页。
+    :return: [{"title", "url", "time", "author"}, ...]
+    """
+    base_url = (base_url or "").rstrip("/")
+    url = f"{base_url}/#!board/{board_id}"
+    if page > 1:
+        url = f"{url}?p={page}"
+    rows = await browser.crawl_selector(
+        url,
+        selector="table tbody tr",
+        wait_until_selector="table tbody tr",
+        wait_until="domcontentloaded",
+        timeout=15000,
+    )
+    result = []
+    for item in rows:
+        parsed = parse_board_row_from_tr(item.get("html") or "")
+        if parsed:
+            result.append(parsed)
+    return result
+
+
 async def crawl_section_boards(browser, base_url: str, section_id_or_slug: str) -> tuple[list, list]:
     """
     异步爬取某讨论区页的版面列表与二级目录列表（从页面主表格 tbody tr 解析）。

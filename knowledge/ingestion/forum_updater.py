@@ -1,0 +1,182 @@
+"""
+按讨论区/版面加载：爬取指定版面的全部帖子（含分页）并更新到给定目录下的 帖子名称.json，文件内包含帖子信息（标题、时间、作者、楼层等）。
+"""
+import asyncio
+import json
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from utils.path_tool import get_abs_path
+from knowledge.ingestion.utils_tools import sanitize_dir
+from knowledge.ingestion.board_ingestor import (
+    crawl_board_posts,
+    crawl_article_detail,
+    build_intro_dict,
+)
+
+
+def load_forum_structure(structure_path: str | None = None) -> dict:
+    """加载讨论区与版面结构。默认使用 data/web_structure/forum_structure.json。"""
+    if structure_path is None:
+        structure_path = get_abs_path("data/web_structure/forum_structure.json")
+    with open(structure_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_board_by_section_and_name(structure: dict, section_name: str, board_name: str) -> dict | None:
+    """
+    按讨论区名称与版面名称查找版面信息。
+    :return: 版面 dict（含 id, name, url 等），未找到返回 None。
+    """
+    sections = structure.get("sections") or []
+    for sec in sections:
+        if (sec.get("name") or "").strip() != (section_name or "").strip():
+            continue
+        for b in sec.get("boards") or []:
+            if (b.get("name") or "").strip() == (board_name or "").strip():
+                return b
+        for sub in sec.get("sub_sections") or []:
+            for b in sub.get("boards") or []:
+                if (b.get("name") or "").strip() == (board_name or "").strip():
+                    return b
+    return None
+
+
+async def update_board_posts(
+    browser,
+    base_url: str,
+    section_name: str,
+    board: dict,
+    output_root: str,
+    max_pages: int = 2,
+    concurrency: int = 32,
+) -> list[str]:
+    """
+    爬取指定版面的多页帖子（异步），拉取每帖详情并保存到 output_root/讨论区/版面/帖子名称.json。
+    :param browser: GlobalBrowser 实例
+    :param base_url: BBS 根 URL
+    :param section_name: 讨论区名称（用于目录路径）
+    :param board: 版面信息 dict，至少含 id, name
+    :param output_root: 输出根目录（如 data/dynamic）
+    :param max_pages: 爬取前几页（1=仅首页）
+    :param concurrency: 并发数（同时打开的帖子数）
+    :return: 已保存的文件路径列表
+    """
+    base_url = (base_url or "").rstrip("/")
+    board_id = board.get("id") or ""
+    board_display_name = board.get("name") or board_id
+    dir_path = os.path.join(output_root, sanitize_dir(section_name), sanitize_dir(board_display_name))
+    os.makedirs(dir_path, exist_ok=True)
+
+    # 异步爬取多页帖子列表
+    async def fetch_page(p: int):
+        return await crawl_board_posts(browser, base_url, board_id, page=p)
+
+    page_results = await asyncio.gather(
+        *[fetch_page(p) for p in range(1, max_pages + 1)],
+        return_exceptions=True,
+    )
+
+    posts = []
+    for i, r in enumerate(page_results):
+        if isinstance(r, BaseException):
+            browser.logger.warning("版面 %s 第 %d 页爬取失败: %s", board_display_name, i + 1, r)
+            continue
+        posts.extend(r)
+
+    # 按 url 去重（同一帖可能出现在多页）
+    seen_urls = set()
+    unique_posts = []
+    for p in posts:
+        u = (p.get("url") or "").strip()
+        if u and u not in seen_urls:
+            seen_urls.add(u)
+            unique_posts.append(p)
+
+    sem = asyncio.Semaphore(concurrency)
+    saved_paths = []
+
+    async def fetch_and_save(post_item: dict):
+        async with sem:
+            try:
+                floors = await crawl_article_detail(browser, base_url, post_item.get("url") or "")
+                intro = build_intro_dict(post_item, floors)
+                safe_title = sanitize_dir((post_item.get("title") or "未命名").strip()) or "未命名"
+                # 若文件名过长则截断，避免路径过长
+                if len(safe_title) > 120:
+                    safe_title = safe_title[:120]
+                fname = f"{safe_title}.json"
+                out_path = os.path.join(dir_path, fname)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(intro, f, ensure_ascii=False, indent=2)
+                browser.logger.info("已保存 %s", out_path)
+                return out_path
+            except Exception as e:
+                browser.logger.warning("帖子详情爬取失败 %s: %s", post_item.get("title"), e)
+                return None
+
+    results = await asyncio.gather(
+        *[fetch_and_save(p) for p in unique_posts],
+        return_exceptions=True,
+    )
+    for r in results:
+        if isinstance(r, str):
+            saved_paths.append(r)
+        elif isinstance(r, BaseException):
+            browser.logger.warning("任务异常: %s", r)
+    return saved_paths
+
+
+async def async_main():
+    """调试入口：爬取「悄悄话」版面首页与第二页所有帖子，保存到 data/dynamic/生活时尚/悄悄话/帖子名称.json。"""
+    from utils.config_handler import load_config
+    from utils.env_handler import load_env, get_bbs_credentials
+    from infrastructure.browser_manager.browser_manager import GlobalBrowser
+    from infrastructure.browser_manager.login import login
+
+    load_env()
+    bbs_cfg = load_config()
+    home_url = (bbs_cfg.get("BBS_Url") or "").strip().rstrip("/")
+    if not home_url:
+        print("未配置 BBS_Url，退出")
+        return
+
+    structure = load_forum_structure()
+    section_name = "生活时尚"
+    board_name = "悄悄话"
+    board = get_board_by_section_and_name(structure, section_name, board_name)
+    if not board:
+        print("未找到版面：%s / %s" % (section_name, board_name))
+        return
+
+    browser = GlobalBrowser(headless=True)
+    await browser.start()
+    try:
+        username, password = get_bbs_credentials()
+        if username and password:
+            await login(browser, username, password)
+        else:
+            print("未设置 BBS_Name/BBS_Password，跳过登录")
+
+        output_root = get_abs_path("data/dynamic")
+        paths = await update_board_posts(
+            browser,
+            home_url,
+            section_name,
+            board,
+            output_root,
+            max_pages=2,
+        )
+        print("共保存 %d 个帖子到 %s" % (len(paths), output_root))
+    finally:
+        await browser.close()
+
+
+def main():
+    asyncio.run(async_main())
+
+
+if __name__ == "__main__":
+    main()

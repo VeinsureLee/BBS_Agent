@@ -4,7 +4,6 @@
 import asyncio
 import json
 import os
-import re
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -23,25 +22,7 @@ from knowledge.ingestion.board_ingestor import (
     crawl_article_detail,
     build_intro_dict,
 )
-
-
-def _sanitize_dir(name: str) -> str:
-    """用于文件路径的安全目录名。"""
-    if not name or not str(name).strip():
-        return "未分类"
-    return re.sub(r'[<>:"/\\|?*]', "_", str(name).strip()) or "未分类"
-
-
-def _collect_all_boards(section_node: dict, section_name: str, path_prefix: list) -> list:
-    """从 section 树中收集所有版面，返回 [(section_name, path_parts, board), ...]。"""
-    out = []
-    name = section_node.get("name") or ""
-    prefix = path_prefix + [name]
-    for b in section_node.get("boards") or []:
-        out.append((section_name, prefix, b))
-    for sub in section_node.get("sub_sections") or []:
-        out.extend(_collect_all_boards(sub, section_name, prefix))
-    return out
+from knowledge.ingestion.utils_tools import sanitize_dir, collect_all_boards
 
 
 async def async_main():
@@ -102,7 +83,7 @@ async def async_main():
         all_boards_flat = []
         for sec in sections_out:
             sec_name = sec.get("name") or ""
-            for item in _collect_all_boards(sec, sec_name, []):
+            for item in collect_all_boards(sec, sec_name, []):
                 all_boards_flat.append(item)
 
         sem = asyncio.Semaphore(32)
@@ -122,20 +103,28 @@ async def async_main():
             return_exceptions=True,
         )
 
+        # 收集所有待抓取详情的置顶帖：(dir_path, index, pinned_item)
+        article_tasks = []
         for r in pinned_results:
             if isinstance(r, BaseException):
                 browser.logger.warning("置顶任务异常: %s", r)
                 continue
             sec_name, path_parts, board, pinned = r
-            parts = [_sanitize_dir(p) for p in path_parts] + [_sanitize_dir(board.get("name") or board["id"])]
+            parts = [sanitize_dir(p) for p in path_parts] + [sanitize_dir(board.get("name") or board["id"])]
             dir_path = os.path.join(out_root, *parts)
             os.makedirs(dir_path, exist_ok=True)
 
             path_display = " / ".join(parts) or sec_name
             browser.logger.info("%s：%d 个置顶帖子爬取完毕", path_display, len(pinned))
 
-            # 不保存置顶行本身，而是打开每个置顶链接后保存内部帖子（楼主、各楼回复、点赞/踩等）
             for index, pinned_item in enumerate(pinned):
+                article_tasks.append((dir_path, index, pinned_item))
+
+        # 多个置顶帖并行打开并保存详情（Semaphore 限制同时打开的帖子数）
+        article_sem = asyncio.Semaphore(64)
+
+        async def fetch_and_save_article(dir_path: str, index: int, pinned_item: dict):
+            async with article_sem:
                 try:
                     floors = await crawl_article_detail(browser, base_url, pinned_item.get("url") or "")
                     intro = build_intro_dict(pinned_item, floors)
@@ -145,6 +134,13 @@ async def async_main():
                     browser.logger.info("已保存 %s", intro_path)
                 except Exception as e:
                     browser.logger.warning("帖子详情爬取失败 %s 介绍%d: %s", dir_path, index, e)
+
+        if article_tasks:
+            browser.logger.info("开始并行爬取帖子详情，共 %s 篇，并发数 5", len(article_tasks))
+            await asyncio.gather(
+                *[fetch_and_save_article(d, i, p) for d, i, p in article_tasks],
+                return_exceptions=True,
+            )
     finally:
         await browser.close()
 
