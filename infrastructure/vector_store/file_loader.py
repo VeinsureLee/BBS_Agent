@@ -101,6 +101,11 @@ def _get_file_documents(read_path: str) -> list[Document]:
     return []
 
 
+def get_file_documents(read_path: str) -> list[Document]:
+    """按扩展名及路径层级用对应 loader 加载为 Document 列表，供向量库等调用。"""
+    return _get_file_documents(read_path)
+
+
 class FileLoader:
     """文件加载器：带 MD5 缓存，按扩展名加载为 Document 列表。"""
 
