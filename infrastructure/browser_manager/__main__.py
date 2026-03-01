@@ -2,6 +2,7 @@
 入口：创建全局浏览器实例，登录，爬取首页内容并保存，关闭浏览器。
 仅使用 utils 读取 config 与路径，不使用 utils 之外模块。
 """
+import asyncio
 import os
 import sys
 
@@ -15,7 +16,7 @@ from infrastructure.browser_manager.browser_manager import GlobalBrowser
 from infrastructure.browser_manager.login import login
 
 
-def main():
+async def async_main():
     # 加载 .env 环境变量（含 BBS_Name、BBS_Password）
     load_env()
 
@@ -26,20 +27,20 @@ def main():
         print("未配置 BBS_Url，退出")
         return
 
-    # 创建全局浏览器实例（可从 config 读取 driver 等，此处用默认）
+    # 创建全局浏览器实例并启动
     browser = GlobalBrowser(headless=True)
-    browser.start()
+    await browser.start()
 
     # 登录（从 .env 读取 BBS_Name、BBS_Password）
     username, password = get_bbs_credentials()
     if username and password:
-        login(browser, username, password)
+        await login(browser, username, password)
     else:
         print("未设置 BBS_Name/BBS_Password（可在项目根目录 .env 中配置），跳过登录")
 
     # 爬取论坛首页（帖子列表）；BBS 为 SPA，登录后跳转为 /#!default
     forum_home = home_url.rstrip("/") + "/#!board/BUPTDNF"
-    content = browser.crawl_page_content(forum_home, wait_after_ms=3000)
+    content = await browser.crawl_page_content(forum_home, wait_after_ms=3000)
     # 格式化 HTML 便于查看（项目已依赖 beautifulsoup4）
     try:
         from bs4 import BeautifulSoup
@@ -52,7 +53,11 @@ def main():
         f.write(content)
     browser.logger.info(f"首页内容已保存到: {out_path}")
 
-    browser.close()
+    await browser.close()
+
+
+def main():
+    asyncio.run(async_main())
 
 
 if __name__ == "__main__":
