@@ -105,7 +105,7 @@ async def async_main():
             for item in _collect_all_boards(sec, sec_name, []):
                 all_boards_flat.append(item)
 
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(32)
 
         async def fetch_pinned(sec_name: str, path_parts: list, board: dict):
             async with sem:
@@ -131,7 +131,10 @@ async def async_main():
             dir_path = os.path.join(out_root, *parts)
             os.makedirs(dir_path, exist_ok=True)
 
-            # 将每个置顶帖打开并保存为 介绍0.json, 介绍1.json, ...
+            path_display = " / ".join(parts) or sec_name
+            browser.logger.info("%s：%d 个置顶帖子爬取完毕", path_display, len(pinned))
+
+            # 不保存置顶行本身，而是打开每个置顶链接后保存内部帖子（楼主、各楼回复、点赞/踩等）
             for index, pinned_item in enumerate(pinned):
                 try:
                     floors = await crawl_article_detail(browser, base_url, pinned_item.get("url") or "")

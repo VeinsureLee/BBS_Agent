@@ -179,29 +179,31 @@ async def crawl_section_boards_via_sidebar(page, base_url: str, section_index: i
 def parse_pinned_from_tr(tr_html: str) -> dict | None:
     """
     从置顶行 tr.top 解析：标题、链接、日期、作者。
-    兼容多列布局：td.title_9 为标题链接，title_10 为日期，title_12 为作者；或按列序 tds[1] 标题等。
+    兼容多列布局：td.title_9 为标题链接，title_10 为日期，title_12 为作者。
+    支持传入 tr 的 inner_html（仅 td 片段，无 tr 标签）或完整 tr 的 outer_html。
     """
     soup = BeautifulSoup(tr_html, "html.parser")
-    tr = soup.find("tr", class_=lambda c: c and "top" in c)
-    if not tr:
+    tr = soup.find("tr", class_=lambda c: c and "top" in (c if isinstance(c, str) else " ".join(c)))
+    root = tr if tr else soup
+    if not root:
         return None
-    tds = tr.find_all("td")
+    tds = root.find_all("td")
     if len(tds) < 4:
         return None
-    title_a = tr.select_one("td.title_9 a[href^='/article/']")
+    title_a = root.select_one("td.title_9 a[href^='/article/']")
     if not title_a:
-        title_a = tr.select_one("a[href^='/article/']")
+        title_a = root.select_one("a[href^='/article/']")
     if not title_a:
         return None
     href = (title_a.get("href") or "").strip()
     if "?" in href:
         href = href.split("?")[0]
     title = (title_a.get_text(strip=True) or "").strip()
-    date_cell = tr.select_one("td.title_10")
+    date_cell = root.select_one("td.title_10")
     if not date_cell:
         date_cell = tds[2] if len(tds) > 2 else None
     post_time = (date_cell.get_text(strip=True) or "").strip() if date_cell else ""
-    author_cell = tr.select_one("td.title_12 a")
+    author_cell = root.select_one("td.title_12 a")
     if not author_cell:
         for td in tds:
             a = td.find("a", href=re.compile(r"/user/query/"))
@@ -272,12 +274,13 @@ async def crawl_board_pinned(browser, base_url: str, board_id: str) -> list:
     """
     base_url = (base_url or "").rstrip("/")
     url = f"{base_url}/#!board/{board_id}"
+    # 等待版面主表格出现行（含置顶或普通帖），再取 tr.top，避免 SPA 未渲染就抓空
     rows = await browser.crawl_selector(
         url,
         selector="tr.top",
-        wait_until_selector="table",
-        wait_until="load",
-        timeout=10000,
+        wait_until_selector="table tbody tr",
+        wait_until="domcontentloaded",
+        timeout=15000,
     )
     result = []
     for item in rows:
@@ -289,11 +292,13 @@ async def crawl_board_pinned(browser, base_url: str, board_id: str) -> list:
 
 def parse_article_detail_html(html: str) -> list:
     """
-    从帖子详情页 HTML（div.b-content .a-wrap）解析每一层楼。
-    返回列表，每项为一层楼：floor_name, author, author_id, nickname, time, content, like_count, dislike_count, level, article_count, score, constellation。
+    从帖子详情页 HTML（div.b-content 内 div.a-wrap.corner）解析每一层楼。
+    返回列表，每项为一层楼：floor_name（楼主/沙发等）, author, author_id, nickname, time, content,
+    like_count, dislike_count, level, article_count, score, constellation。
     """
     soup = BeautifulSoup(html, "html.parser")
-    wraps = soup.select("div.a-wrap.corner")
+    content_root = soup.select_one("div.b-content") or soup
+    wraps = content_root.select("div.a-wrap.corner")
     result = []
     for wrap in wraps:
         table = wrap.find("table", class_="article")
@@ -317,6 +322,11 @@ def parse_article_detail_html(html: str) -> list:
                 if "/user/query/" in href:
                     author_id = href.split("/user/query/")[-1].split("?")[0].strip() or author
                 else:
+                    author_id = author
+            else:
+                name_el = head.select_one(".a-u-name")
+                if name_el:
+                    author = (name_el.get_text(strip=True) or "").strip()
                     author_id = author
             pos_span = head.select_one(".a-pos")
             if pos_span:
@@ -398,24 +408,37 @@ def parse_article_detail_html(html: str) -> list:
 
 async def crawl_article_detail(browser, base_url: str, article_url: str) -> list:
     """
-    异步打开帖子详情页，解析每层楼并返回（与 介绍[index].json 中 floors 格式一致）。
+    异步打开帖子详情页，等待内部楼层出现后解析（楼主、各楼回复、点赞/踩等）。
     :param article_url: 相对路径如 /article/BM_Market/2034
-    :return: floors 列表
+    :return: floors 列表（与 介绍[index].json 中 floors 格式一致）
     """
     base_url = (base_url or "").rstrip("/")
     url = article_url if article_url.startswith("http") else (base_url + article_url)
-    html = await browser.crawl_page_content(url, wait_until="domcontentloaded")
-    return parse_article_detail_html(html)
+    page = await browser.new_page(url, wait_until="domcontentloaded")
+    try:
+        await page.wait_for_selector(
+            "div.b-content .a-wrap.corner, div.a-wrap.corner",
+            timeout=15000,
+            state="attached",
+        )
+        await page.wait_for_timeout(500)
+        html = await page.content()
+        return parse_article_detail_html(html)
+    finally:
+        await page.close()
 
 
 def build_intro_dict(pinned_item: dict, floors: list) -> dict:
-    """根据置顶项与楼层列表组装为 data/web_structure 下的 介绍 格式。"""
+    """
+    根据「点击进入后的帖子详情」组装为 介绍 格式。
+    仅用置顶行提供标题与链接；时间、作者、楼层（含楼主、点赞/踩等）均来自打开后的内部帖子。
+    """
     reply_count = max(0, len(floors) - 1) if floors else 0
     first = floors[0] if floors else {}
     return {
         "title": pinned_item.get("title") or "",
-        "time": pinned_item.get("time") or first.get("time") or "",
-        "author": pinned_item.get("author") or first.get("author") or "",
+        "time": first.get("time") or pinned_item.get("time") or "",
+        "author": first.get("author") or pinned_item.get("author") or "",
         "reply_count": reply_count,
         "url": pinned_item.get("url") or "",
         "floors": floors,
