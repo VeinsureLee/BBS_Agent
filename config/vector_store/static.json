@@ -1,22 +1,11 @@
 {
-  "description": "静态知识库配置（站点结构等相对固定的数据）",
+  "description": "论坛结构总结后的向量库（每版面一份总结）",
+  "data_role": "static",
   "collection_name": "bbs_static_knowledge",
   "persist_directory": "vector_db/static",
+  "md5_hex_store": "vector_db/static/md5.txt",
+  "data_path": "data/web_structure",
   "k": 10,
-  "data_path": "data",
-  "raw_data_path": {
-    "description": "原信息，未进行处理",
-    "path": "data/raw/web_structure",
-    "file_type": ["pdf", "txt", "json"],
-    "hierarchy": true
-  },
-  "derived_data_path": {
-    "description": "派生类信息",
-    "path": "data/processed/webdata",
-    "file_type": "json",
-    "hierarchy": true
-  },
-  "md5_hex_store": "vector_db/static/md5.text",
   "allow_knowledge_file_type": ["txt", "pdf", "json"],
   "chunk_size": 500,
   "chunk_overlap": 50,

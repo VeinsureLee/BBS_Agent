@@ -1,16 +1,11 @@
 {
-  "description": "用户数据向量库配置",
+  "description": "用户上传数据的向量库",
+  "data_role": "store",
   "collection_name": "usr_knowledge_base",
   "persist_directory": "vector_db/store",
+  "md5_hex_store": "vector_db/store/md5.txt",
+  "data_path": "data/store",
   "k": 10,
-  "data_path": "data",
-  "raw_data_path": {
-    "description": "原信息，未进行处理",
-    "path": "data/raw/usr_uploads",
-    "file_type": ["pdf", "txt", "json"],
-    "hierarchy": true
-  },
-  "md5_hex_store": "vector_db/store/md5.text",
   "allow_knowledge_file_type": ["txt", "pdf", "json"],
   "chunk_size": 500,
   "chunk_overlap": 50,
