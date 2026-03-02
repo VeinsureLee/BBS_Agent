@@ -10,7 +10,7 @@ if _root not in sys.path:
 
 from agent.planner import Planner
 from agent.router import Router
-from agent.workflow import Workflow
+from agent.pipeline import Pipeline
 from agent.memory import Memory
 
 
@@ -18,7 +18,7 @@ class Agent:
     def __init__(self):
         self.planner = Planner()
         self.router = Router()
-        self.workflow = Workflow()
+        self.pipeline = Pipeline()
         self.memory = Memory()
         pass
 
