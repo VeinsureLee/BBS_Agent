@@ -3,26 +3,10 @@
 待处理信息：
 讨论区名称：{section_name}
 版面名称：{board_name}
+版面层级路径：{hierarchy_path}（如 北邮校园/院系校区/经济管理学院，与站点结构一致）
 版面置顶内容摘要：{intro_summary}
 
-请严格按以下 6 个维度提取标签（每个维度为字符串数组，只填关键词，不写句子、不解释）：
-1、发言规则：允许匿名/需实名/需昵称、发帖格式、回帖规范、字数限制、内容禁忌、审核机制、发帖频率、等级限制等
-2、帖子类型：生活、情感、学习、工作、求职、技术、数码、游戏、影视、美食、旅行、二手交易、活动召集、求助问答、资讯分享等
-3、版面定位：交流讨论、信息发布、资源共享、求助答疑、官方公告、粉丝同好、交易集市、活动组织等
-4、受众人群：全体用户、新用户、学生、职场人、爱好者、专业人士、本地用户等
-5、内容风格：严肃专业、轻松闲聊、硬核技术、温馨治愈、娱乐搞笑、客观中立、经验干货等
-6、互动形式：发帖为主、回帖讨论为主、投票为主、提问解答为主、长期打卡为主等
+{dimensions_instruction}
 
 **必须且仅输出一个合法 JSON 对象**，不要包含 markdown 代码块标记或其它说明文字。字段名与类型如下（数组元素均为字符串）：
-- board_name：版面名称（字符串）
-- section_name：所属讨论区（字符串）
-- summary：版面简介（字符串，一两句话概括版面定位与用途，用于检索）
-- speech_rules：发言规则（字符串数组）
-- post_types：帖子类型（字符串数组）
-- board_positioning：版面定位（字符串数组）
-- target_audience：受众人群（字符串数组）
-- content_style：内容风格（字符串数组）
-- interaction_form：互动形式（字符串数组）
-
-示例格式：
-{{"board_name":"xxx","section_name":"xxx","summary":"xxx","speech_rules":["a","b"],"post_types":["c"],"board_positioning":["d"],"target_audience":["e"],"content_style":["f"],"interaction_form":["g"]}}
+{json_schema}

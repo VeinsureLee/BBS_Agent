@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.config_handler import load_json_config
 from utils.path_tool import get_abs_path
 from utils.logger_handler import logger
+from utils.dimension_config import get_dimensions_instruction, get_json_schema_for_prompt
 
 # 提示词路径配置（config/prompts/prompts.json）
 prompts_conf = load_json_config(default_path="config/prompts/prompts.json")
@@ -54,7 +55,7 @@ def load_report_prompts():
 
 
 def load_prompt_generate():
-    """加载版面说明生成用提示词模板（prompts/prompt_generate.txt），用于模型生成发言规则与帖子类型。"""
+    """加载版面说明生成用提示词模板（prompts/prompt_generate.txt），并从 config/data/data_dimension.json 填入维度说明与 JSON  schema。"""
     try:
         prompt_generate_path = get_abs_path(prompts_conf["prompt_generate_path"])
     except KeyError as e:
@@ -62,7 +63,10 @@ def load_prompt_generate():
         raise e
 
     try:
-        return open(prompt_generate_path, "r", encoding="utf-8").read()
+        template = open(prompt_generate_path, "r", encoding="utf-8").read()
+        template = template.replace("{dimensions_instruction}", get_dimensions_instruction())
+        template = template.replace("{json_schema}", get_json_schema_for_prompt())
+        return template
     except Exception as e:
         logger.error(f"[load_prompt_generate]解析版面说明生成提示词出错，{str(e)}")
         raise e

@@ -22,6 +22,14 @@ from .headers_handler import (
 from .logger_handler import logger
 from .path_tool import get_abs_path, get_project_root
 from .timer import timer, timed
+from .dimension_config import (
+    get_data_dimension,
+    get_board_field_keys,
+    get_field_label_map,
+    get_tag_keys,
+    get_dimensions_instruction,
+    get_json_schema_for_prompt,
+)
 
 __all__ = [
     "load_config",
@@ -45,4 +53,10 @@ __all__ = [
     "get_project_root",
     "timer",
     "timed",
+    "get_data_dimension",
+    "get_board_field_keys",
+    "get_field_label_map",
+    "get_tag_keys",
+    "get_dimensions_instruction",
+    "get_json_schema_for_prompt",
 ]

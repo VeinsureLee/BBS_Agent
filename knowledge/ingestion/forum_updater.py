@@ -1,10 +1,12 @@
 """
-按讨论区/版面加载：爬取指定版面的全部帖子（含分页）并更新到给定目录下的 帖子名称.json，文件内包含帖子信息（标题、时间、作者、楼层等）。
+按讨论区/版面加载：爬取指定版面的全部帖子（含分页）并更新到给定目录下的 日期/帖子名称.json，文件内包含帖子信息（标题、时间、作者、楼层等）。
 """
 import asyncio
 import json
 import os
+import re
 import sys
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -44,6 +46,49 @@ def get_board_by_section_and_name(structure: dict, section_name: str, board_name
     return None
 
 
+# BBS 常见发帖时间格式（如 "Thu Oct  6 14:23:37 2022"）的 strptime 格式
+_BBS_TIME_FMT = "%a %b %d %H:%M:%S %Y"
+
+# 英文月份名到数字的映射，用于正则解析
+_MONTH_NAMES = {
+    "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06",
+    "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12",
+}
+
+
+def _date_folder_from_time(time_str: str) -> str:
+    """
+    从帖子发帖时间字符串解析出用于目录名的日期，格式 YYYY-MM-DD。
+    仅使用发帖时间，无法解析时不使用爬取时间，返回「未知日期」。
+    """
+    if not (time_str and (time_str := time_str.strip())):
+        return "未知日期"
+    # 1. 匹配 YYYY-MM-DD 或 YYYY/MM/DD
+    m = re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", time_str)
+    if m:
+        y, mo, d = m.group(1), m.group(2).zfill(2), m.group(3).zfill(2)
+        return f"{y}-{mo}-{d}"
+    # 2. BBS 格式：Thu Oct  6 14:23:37 2022
+    try:
+        dt = datetime.strptime(time_str, _BBS_TIME_FMT)
+        return dt.strftime("%Y-%m-%d")
+    except ValueError:
+        pass
+    # 3. 正则兜底：Month DD ... YYYY
+    m2 = re.search(
+        r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}).*?(\d{4})",
+        time_str,
+        re.IGNORECASE,
+    )
+    if m2:
+        mo = _MONTH_NAMES.get(m2.group(1)[:3].capitalize())
+        if mo:
+            d = m2.group(2).zfill(2)
+            y = m2.group(3)
+            return f"{y}-{mo}-{d}"
+    return "未知日期"
+
+
 async def update_board_posts(
     browser,
     base_url: str,
@@ -54,7 +99,7 @@ async def update_board_posts(
     concurrency: int = 32,
 ) -> list[str]:
     """
-    爬取指定版面的多页帖子（异步），拉取每帖详情并保存到 output_root/讨论区/版面/帖子名称.json。
+    爬取指定版面的多页帖子（异步），拉取每帖详情并保存到 output_root/讨论区/版面/日期/帖子名称.json。
     :param browser: GlobalBrowser 实例
     :param base_url: BBS 根 URL
     :param section_name: 讨论区名称（用于目录路径）
@@ -67,8 +112,7 @@ async def update_board_posts(
     base_url = (base_url or "").rstrip("/")
     board_id = board.get("id") or ""
     board_display_name = board.get("name") or board_id
-    dir_path = os.path.join(output_root, sanitize_dir(section_name), sanitize_dir(board_display_name))
-    os.makedirs(dir_path, exist_ok=True)
+    board_dir = os.path.join(output_root, sanitize_dir(section_name), sanitize_dir(board_display_name))
 
     # 异步爬取多页帖子列表
     async def fetch_page(p: int):
@@ -103,6 +147,9 @@ async def update_board_posts(
             try:
                 floors = await crawl_article_detail(browser, base_url, post_item.get("url") or "")
                 intro = build_intro_dict(post_item, floors)
+                date_folder = _date_folder_from_time(intro.get("time") or "")
+                dir_path = os.path.join(board_dir, date_folder)
+                os.makedirs(dir_path, exist_ok=True)
                 safe_title = sanitize_dir((post_item.get("title") or "未命名").strip()) or "未命名"
                 # 若文件名过长则截断，避免路径过长
                 if len(safe_title) > 120:
@@ -130,7 +177,7 @@ async def update_board_posts(
 
 
 async def async_main():
-    """调试入口：爬取「悄悄话」版面首页与第二页所有帖子，保存到 data/dynamic/生活时尚/悄悄话/帖子名称.json。"""
+    """调试入口：爬取「悄悄话」版面首页与第二页所有帖子，保存到 data/dynamic/生活时尚/悄悄话/日期/帖子名称.json。"""
     from utils.config_handler import load_config
     from utils.env_handler import load_env, get_bbs_credentials
     from infrastructure.browser_manager.browser_manager import GlobalBrowser
@@ -144,8 +191,8 @@ async def async_main():
         return
 
     structure = load_forum_structure()
-    section_name = "生活时尚"
-    board_name = "悄悄话"
+    section_name = "北邮校园"
+    board_name = "北邮图书馆"
     board = get_board_by_section_and_name(structure, section_name, board_name)
     if not board:
         print("未找到版面：%s / %s" % (section_name, board_name))
@@ -167,7 +214,8 @@ async def async_main():
             section_name,
             board,
             output_root,
-            max_pages=2,
+            max_pages=4,
+            concurrency=16,
         )
         print("共保存 %d 个帖子到 %s" % (len(paths), output_root))
     finally:
