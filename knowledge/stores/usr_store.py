@@ -100,6 +100,11 @@ def get_usr_vector_store_retriever(chroma_cfg: dict | None = None):
     return get_usr_vector_store(chroma_cfg=chroma_cfg).get_retriever()
 
 
-# 模块加载时初始化用户向量库
-success = init_usr_vector_store(max_workers=2)
-logger.info("用户向量库初始化: %s", "成功" if success else "失败")
+# 模块加载时：读取 init.json，已初始化则跳过，否则执行初始化
+_init_data = _load_init_json()
+if _init_data.get(INIT_STATUS_KEY) is True:
+    get_usr_vector_store()
+    logger.info("用户向量库已初始化，跳过")
+else:
+    success = init_usr_vector_store(max_workers=2)
+    logger.info("用户向量库初始化: %s", "成功" if success else "失败")
