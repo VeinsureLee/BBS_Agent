@@ -142,24 +142,17 @@ def get_board_json_paths(data_root: Path, board: str) -> list[Path]:
     return out
 
 
-def clean_board(
-    board: str,
-    data_root: str | Path = "data/dynamic",
-) -> int:
+def clean_json_files(file_paths: list[Path] | list[str]) -> int:
     """
-    清理指定版面下所有帖子的 content，按发信人、信区、标题等分块并写回原路径。
-
-    :param board: 版面名，如 "创意生活" 或 "生活时尚/创意生活"
-    :param data_root: data/dynamic 的根路径，默认项目下的 data/dynamic
-    :return: 处理过的 JSON 文件数量
+    仅对给定的 JSON 文件路径做 content 分块清理并写回，不处理其他文件。
+    :param file_paths: 要清理的帖子 JSON 文件路径列表（Path 或 str）
+    :return: 成功处理并写回的文件数量
     """
-    root = Path(data_root)
-    if not root.is_absolute():
-        # 相对路径：相对于项目根（本文件在 knowledge/processing/clean.py）
-        root = Path(__file__).resolve().parent.parent.parent / root
-    paths = get_board_json_paths(root, board)
     count = 0
-    for path in paths:
+    for p in file_paths:
+        path = Path(p) if not isinstance(p, Path) else p
+        if not path.is_file() or path.suffix.lower() != ".json":
+            continue
         try:
             with path.open("r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -178,6 +171,25 @@ def clean_board(
             continue
         count += 1
     return count
+
+
+def clean_board(
+    board: str,
+    data_root: str | Path = "data/dynamic",
+) -> int:
+    """
+    清理指定版面下所有帖子的 content，按发信人、信区、标题等分块并写回原路径。
+
+    :param board: 版面名，如 "创意生活" 或 "生活时尚/创意生活"
+    :param data_root: data/dynamic 的根路径，默认项目下的 data/dynamic
+    :return: 处理过的 JSON 文件数量
+    """
+    root = Path(data_root)
+    if not root.is_absolute():
+        # 相对路径：相对于项目根（本文件在 knowledge/processing/clean.py）
+        root = Path(__file__).resolve().parent.parent.parent / root
+    paths = get_board_json_paths(root, board)
+    return clean_json_files(paths)
 
 
 if __name__ == "__main__":

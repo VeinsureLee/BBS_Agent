@@ -50,17 +50,49 @@ def get_board_by_section_and_name(structure: dict, section_name: str, board_name
     按讨论区名称与版面名称查找版面信息。
     :return: 版面 dict（含 id, name, url 等），未找到返回 None。
     """
+    return get_board_by_section_subsection_and_name(
+        structure, section_name, board_name, sub_section_name=None
+    )
+
+
+def get_board_by_section_subsection_and_name(
+    structure: dict,
+    section_name: str,
+    board_name: str,
+    sub_section_name: str | None = None,
+) -> dict | None:
+    """
+    按讨论区、可选二级目录与版面名称查找版面信息。
+    :param structure: 讨论区结构（含 sections）
+    :param section_name: 讨论区名称（forum）
+    :param board_name: 版面名称（board）
+    :param sub_section_name: 二级目录名称（可选）；若指定则仅在该二级目录下查找版面
+    :return: 版面 dict（含 id, name, url 等），未找到返回 None。
+    """
     sections = structure.get("sections") or []
+    section_name = (section_name or "").strip()
+    board_name = (board_name or "").strip()
+    sub_section_name = (sub_section_name or "").strip() or None
+
     for sec in sections:
-        if (sec.get("name") or "").strip() != (section_name or "").strip():
+        if (sec.get("name") or "").strip() != section_name:
             continue
-        for b in sec.get("boards") or []:
-            if (b.get("name") or "").strip() == (board_name or "").strip():
-                return b
-        for sub in sec.get("sub_sections") or []:
-            for b in sub.get("boards") or []:
-                if (b.get("name") or "").strip() == (board_name or "").strip():
+        if sub_section_name:
+            for sub in sec.get("sub_sections") or []:
+                if (sub.get("name") or "").strip() != sub_section_name:
+                    continue
+                for b in sub.get("boards") or []:
+                    if (b.get("name") or "").strip() == board_name:
+                        return b
+                return None
+        else:
+            for b in sec.get("boards") or []:
+                if (b.get("name") or "").strip() == board_name:
                     return b
+            for sub in sec.get("sub_sections") or []:
+                for b in sub.get("boards") or []:
+                    if (b.get("name") or "").strip() == board_name:
+                        return b
     return None
 
 

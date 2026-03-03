@@ -166,14 +166,25 @@ def init_dynamic_store(
                 return None
 
         def add_to_store_and_save_md5(path: str, docs: list[Document], md5_hex: str) -> int:
-            """写入向量库并保存 MD5；若已存在则跳过。返回本次写入的文档数（0 表示已跳过）。"""
+            """写入向量库并保存 MD5；若已存在则跳过。返回本次写入的文档数（0 表示已跳过或失败）。"""
             with write_lock:
                 if check_md5_hex(md5_hex, md5_store_path):
                     logger.info("[动态向量库] 内容已存在知识库内，跳过: %s", path)
                     return 0
                 split_docs = vs.spliter.split_documents(docs)
-                if split_docs:
+                if not split_docs:
+                    return 0
+                try:
                     vs.vector_store.add_documents(split_docs)
+                except (KeyError, Exception) as e:
+                    # DashScope 等嵌入 API 失败时，其 response 可能与 requests.HTTPError 不兼容，导致 KeyError: 'request'
+                    logger.warning(
+                        "[动态向量库] 嵌入/写入失败，跳过该文件（未记录 MD5，下次可重试）| 文件=%s | 错误=%s。"
+                        "请检查 DASHSCOPE_API_KEY 或网络。",
+                        path,
+                        e,
+                    )
+                    return 0
                 save_md5_hex(md5_hex, md5_store_path)
                 logger.info(
                     "[动态向量库] 帖面向量化完成 | 文件=%s | 文档数=%d",
