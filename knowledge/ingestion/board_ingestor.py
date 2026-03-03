@@ -1,5 +1,19 @@
 """
-版面（board）与二级目录异步爬取：从侧栏（点击 forum 后）解析版面/二级目录；从版面页解析置顶；从帖子页解析详情并保存为介绍[index].json。
+版面（board）与二级目录异步爬取模块：解析版面树、置顶帖与帖子详情。
+
+功能说明：
+    - 从侧栏（点击 forum 后）或主表格 tbody tr 解析版面与二级目录；
+    - 从版面页解析置顶帖列表（标题、链接、日期、作者）；
+    - 从帖子详情页解析楼层（楼主/沙发、作者、点赞/踩、正文等）；
+    - 将置顶行信息与打开后的楼层组装为「介绍」格式（可保存为 介绍[index].json）。
+
+主要接口入参/出参（摘要）：
+    - parse_section_table_tr(tr_html) -> dict | None：解析单行 tr，出参含 type(board|sub_section), name, id, href 等。
+    - parse_section_table(tr_items) -> (boards, sub_sections)：从 tr 列表解析版面与二级目录列表。
+    - crawl_section_boards_tree(browser, base_url, section_id_or_slug) -> dict：出参 {"boards", "sub_sections"}，含完整版面树。
+    - crawl_board_pinned(browser, base_url, board_id) -> list：出参 [{"title","url","time","author"}, ...]。
+    - crawl_article_detail(browser, base_url, article_url) -> list：出参楼层列表，与介绍 JSON 中 floors 格式一致。
+    - build_intro_dict(pinned_item, floors) -> dict：出参 {"title","time","author","reply_count","url","floors"}。
 """
 import re
 from bs4 import BeautifulSoup

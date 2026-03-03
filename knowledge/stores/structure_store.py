@@ -1,8 +1,21 @@
 """
-论坛结构（static 目录下 web structure 信息）的向量库封装：
-从 data/static 加载版面 JSON，按层级（讨论区、版面、子版面）拆成多字段文档并写入向量库。
-列表型维度（如发言规则）按条拆成多条文档存储，便于按版面聚合后做平均相似度查询。
-成功后更新 config/init.json 中的 static_vector_store_status。
+论坛结构向量库封装：将 data/static 下版面 JSON 按字段拆成文档写入 Chroma。
+
+功能说明：
+    - 从 data/static 加载版面 JSON，按层级（讨论区、版面、子版面）与字段（speech_rules、post_types 等）拆成多条 Document；
+    - 列表型维度按条拆成多条文档存储，便于按版面聚合做相似度查询；
+    - 使用 MD5 去重，成功后更新 config/init.json 中 static_vector_store_status 为 True；
+    - 提供单例及 get_static_structure_retriever / get_static_structure_vector_store 供检索使用。
+
+主要接口入参/出参：
+    - init_static_structure_store(static_folder_path: str | None, max_workers: int = 4) -> bool
+        入参：static_folder_path — 版面 JSON 目录，None 时使用 data/static；max_workers — 加载线程数。
+        出参：是否初始化成功；成功时写入 init.json 的 static_vector_store_status。
+    - get_static_structure_store(chroma_cfg: dict | None) -> VectorStoreService
+        入参：chroma_cfg — 可选，None 时从 config/vector_store/static.json 加载。
+        出参：结构向量库服务实例（单例）。
+    - get_static_structure_vector_store(chroma_cfg) / get_static_structure_retriever(chroma_cfg)
+        入参：同上。出参：Chroma 实例或 Retriever。
 """
 import json
 import os

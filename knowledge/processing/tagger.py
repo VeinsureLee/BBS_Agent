@@ -1,6 +1,25 @@
 """
-版面标签生成：加载 prompts/prompt_generate.txt，调用 chat 模型生成各维度标签（JSON），
-供知识库入库或检索使用。
+版面标签生成：根据版面置顶/介绍内容调用大模型生成多维度标签并写入 data/static。
+
+功能说明：
+    - 加载 prompts/prompt_generate.txt 作为模板，调用 chat 模型根据版面介绍内容生成 JSON 标签；
+    - 标签维度包括 board_name、section_name、summary、speech_rules、post_types、board_positioning 等；
+    - 支持单版面生成（generate_tags、tag_one_board）与按文档列表按版面分组批量打标签（tag_documents）；
+    - 可从 data/web_structure 读取所有介绍 JSON，多线程打标签后保存到 data/static，无介绍文件的版面生成占位 JSON。
+
+主要接口入参/出参：
+    - generate_tags(content, prompt_template=None, section_name="", board_name="", hierarchy_path="") -> dict
+        入参：content — 合并后的版面置顶/介绍内容；prompt_template — 可选；section_name/board_name/hierarchy_path — 用于 prompt 与保存。
+        出参：含 board_name、section_name、summary、speech_rules、post_types 等键的字典（与 data_dimension 一致）。
+    - tag_one_board(section_name, board_name, group: list[Document], prompt_template=None) -> Document | None
+        入参：section_name、board_name — 讨论区与版面名；group — 该版面下所有文档；prompt_template — 可选。
+        出参：一条 Document（page_content 为 summary，metadata 含所有标签维度），失败或无内容时返回 None。
+    - tag_documents(docs, prompt_template=None, max_workers=1, static_root=None) -> list[Document]
+        入参：docs — 原始文档列表（含 section/board metadata）；max_workers — 并行版面数；static_root — 若传入则每版面处理完即写入该目录。
+        出参：每个版面一条的 Document 列表。
+    - run_from_web_structure_to_static(web_structure_dir=None, static_dir=None, max_workers=None) -> int
+        入参：web_structure_dir — 默认 data/web_structure；static_dir — 默认 data/static；max_workers — 多线程数，不传则从环境变量 TAG_MAX_WORKERS 读取（默认 8）。标签化多线程在此处或 tag_documents(max_workers=...) 调整。
+        出参：写入 data/static 的版面数（含占位）。
 """
 import json
 import os
@@ -23,6 +42,45 @@ from utils.prompt_loader import load_prompt_generate
 from utils.logger_handler import logger
 from utils.path_tool import get_abs_path
 from utils.dimension_config import get_tag_keys, get_tag_key_default
+
+# 标签初始化状态与线程数（config/init.json）
+INIT_JSON_PATH = "config/init.json"
+TAG_INIT_STATUS_KEY = "tag_init_status"
+TAG_MAX_WORKERS_KEY = "tag_max_workers"
+
+
+def _get_init_json_path() -> str:
+    return get_abs_path(INIT_JSON_PATH)
+
+
+def _load_init_json() -> dict:
+    """读取 config/init.json，缺失或解析失败返回默认 dict。"""
+    path = _get_init_json_path()
+    default = {"usr_vector_store_status": False, "static_vector_store_status": False, TAG_INIT_STATUS_KEY: False, TAG_MAX_WORKERS_KEY: 8}
+    if not os.path.exists(path):
+        return default
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else default
+    except (json.JSONDecodeError, IOError):
+        return default
+
+
+def _update_init_status(updates: dict) -> None:
+    """仅更新 config/init.json 中指定字段，其余保留。"""
+    path = _get_init_json_path()
+    data = _load_init_json()
+    data.update(updates)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+
+def is_already_tagged() -> bool:
+    """根据 config/init.json 的 tag_init_status 判断是否已完成标签初始化。"""
+    return bool(_load_init_json().get(TAG_INIT_STATUS_KEY))
+
 
 RETRY_DELAYS = (1.0, 2.0, 3.0)
 MAX_RETRIES = 1024
@@ -113,17 +171,17 @@ def _invoke_tag_prompt(
             if other_err_count >= MAX_RETRIES:
                 raise last_err
             delay = RETRY_DELAYS[(other_err_count - 1) % len(RETRY_DELAYS)]
-            print(f"[标签生成失败并重试] 返回空 | {section_name}/{board_name} | {delay}s 后重试 ({other_err_count}/{MAX_RETRIES})", flush=True)
+            logger.warning("[标签生成] 返回空，重试 %s/%s | %ss 后重试 (%s/%s)", section_name, board_name, delay, other_err_count, MAX_RETRIES)
             time.sleep(delay)
         except KeyError as e:
             if e.args and e.args[0] == "request":
                 last_err = e
                 request_err_count += 1
                 if request_err_count >= REQUEST_KEYERROR_MAX:
-                    print(f"[标签生成失败] KeyError('request') 已达最大重试 {REQUEST_KEYERROR_MAX}，放弃", flush=True)
+                    logger.error("[标签生成] KeyError('request') 已达最大重试 %s，放弃", REQUEST_KEYERROR_MAX)
                     raise last_err
                 delay = RETRY_DELAYS[(request_err_count - 1) % len(RETRY_DELAYS)]
-                print(f"[标签生成失败并重试] KeyError('request') | {section_name}/{board_name} | {delay}s 后重试 ({request_err_count}/{REQUEST_KEYERROR_MAX})", flush=True)
+                logger.warning("[标签生成] KeyError('request') 重试 %s/%s | %ss 后 (%s/%s)", section_name, board_name, delay, request_err_count, REQUEST_KEYERROR_MAX)
                 time.sleep(delay)
             else:
                 last_err = e
@@ -131,7 +189,7 @@ def _invoke_tag_prompt(
                 if other_err_count >= MAX_RETRIES:
                     raise last_err
                 delay = RETRY_DELAYS[min(other_err_count - 1, len(RETRY_DELAYS) - 1)]
-                print(f"[标签生成失败并重试] KeyError | {section_name}/{board_name}: {e}", flush=True)
+                logger.warning("[标签生成] KeyError 重试 %s/%s: %s", section_name, board_name, e)
                 time.sleep(delay)
         except (ConnectionError, TimeoutError) as e:
             last_err = e
@@ -139,7 +197,7 @@ def _invoke_tag_prompt(
             if other_err_count >= MAX_RETRIES:
                 raise last_err
             delay = RETRY_DELAYS[min(other_err_count - 1, len(RETRY_DELAYS) - 1)]
-            print(f"[标签生成失败并重试] {type(e).__name__} | {section_name}/{board_name}: {e}", flush=True)
+            logger.warning("[标签生成] %s 重试 %s/%s: %s", type(e).__name__, section_name, board_name, e)
             time.sleep(delay)
 
 
@@ -238,7 +296,7 @@ def tag_one_board(
             hierarchy_path=hierarchy_path,
         )
     except Exception as e:
-        print(f"[标签生成失败，使用原文] {section_name}/{board_name} | {type(e).__name__}: {e}", flush=True)
+        logger.warning("[标签生成] 失败并使用原文 %s/%s | %s: %s", section_name, board_name, type(e).__name__, e)
         summary = _fallback_summary_from_raw(combined, max_len=400)
         tags = {k: get_tag_key_default(k) for k in TAG_KEYS}
         tags["board_name"] = board_name or "未知版面"
@@ -306,7 +364,7 @@ def tag_documents(
             _save_tagged_doc_to_static(doc, static_root)
         with lock:
             done[0] += 1
-            print(f"[标签处理] ({done[0]}/{total}) {sn} / {bn} 完成", flush=True)
+            logger.info("[标签处理] (%s/%s) %s / %s 完成", done[0], total, sn, bn)
         return doc
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -416,20 +474,27 @@ def run_from_web_structure_to_static(
 ) -> int:
     """
     从 data/web_structure 读取所有介绍 JSON，多线程调用模型打标签，保存到 data/static。
+    若 config/init.json 中 tag_init_status 为 true 则跳过（已标签化）。
     原文件夹中无介绍文件的版面也会在 static 中生成占位 JSON，不跳过。
     web_structure_dir: 不传则使用 get_abs_path("data/web_structure")
     static_dir: 不传则使用 get_abs_path("data/static")
-    max_workers: 不传则从环境变量 TAG_MAX_WORKERS 读取，默认 8
-    返回写入 data/static 的版面数（含占位）。
+    max_workers: 不传则从 config/init.json 的 tag_max_workers 读取，默认 8
+    返回写入 data/static 的版面数（含占位）；已标签化时返回 0。
     """
+    if is_already_tagged():
+        logger.info("[Tagger] 已标签化（tag_init_status 为 true），跳过打标签")
+        return 0
+
     web_structure_dir = web_structure_dir or get_abs_path("data/web_structure")
     static_dir = static_dir or get_abs_path("data/static")
     if max_workers is None:
+        data = _load_init_json()
         try:
-            max_workers = int(os.environ.get("TAG_MAX_WORKERS", "8"))
-        except ValueError:
+            max_workers = max(1, int(data.get(TAG_MAX_WORKERS_KEY, 8)))
+        except (TypeError, ValueError):
             max_workers = 8
-    max_workers = max(1, max_workers)
+    else:
+        max_workers = max(1, max_workers)
 
     all_board_paths = _collect_all_board_hierarchy_paths(web_structure_dir)
     intro_paths = _collect_intro_json_paths(web_structure_dir)
@@ -458,17 +523,19 @@ def run_from_web_structure_to_static(
     total = len(tagged) + len(missing)
     if total > 0:
         logger.info("[Tagger] 合计写入 data/static 共 %d 个版面。", total)
+        _update_init_status({TAG_INIT_STATUS_KEY: True})
+        logger.info("[Tagger] 已更新 config/init.json 标签初始化状态 tag_init_status=true。")
     return total
 
 
 if __name__ == "__main__":
     """
     入口：按 data/web_structure 结构读取介绍 JSON，多线程调用模型打标签，保存到 data/static。
-    运行: python -m knowledge.processing.tagger
+    若已标签化则跳过。运行: python -m knowledge.processing.tagger
     可选环境变量: TAG_MAX_WORKERS（默认 8）
     """
     n = run_from_web_structure_to_static(max_workers=128)
     if n == 0:
-        print("[Tagger] 未处理任何版面（无介绍文件或加载失败），退出。", flush=True)
-        sys.exit(1)
-    print(f"[Tagger] 已全部写入 data/static（共 {n} 个版面）。", flush=True)
+        logger.info("[Tagger] 未处理任何版面（已标签化或无介绍文件或加载失败），退出。")
+    else:
+        logger.info("[Tagger] 已全部写入 data/static（共 %s 个版面）。", n)

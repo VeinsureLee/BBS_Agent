@@ -1,5 +1,23 @@
 """
-按讨论区/版面加载：爬取指定版面的全部帖子（含分页）并更新到给定目录下的 日期/帖子名称.json，文件内包含帖子信息（标题、时间、作者、楼层等）。
+按讨论区/版面增量更新：爬取指定版面的帖子（含分页）并保存为 日期/帖子名称.json。
+
+功能说明：
+    - 从 data/web_structure/forum_structure.json 加载讨论区与版面结构；
+    - 按讨论区名称与版面名称查找版面信息；
+    - 爬取指定版面的多页帖子列表，拉取每帖详情并保存到 output_root/讨论区/版面/日期/帖子名称.json；
+    - 发帖时间解析支持 YYYY-MM-DD、BBS 格式（如 Thu Oct 6 14:23:37 2022）等，用于目录名。
+
+主要接口入参/出参：
+    - load_forum_structure(structure_path: str | None) -> dict
+        入参：structure_path — 结构 JSON 路径，None 时使用 data/web_structure/forum_structure.json。
+        出参：含 "sections" 的 dict。
+    - get_board_by_section_and_name(structure, section_name, board_name) -> dict | None
+        入参：structure — 讨论区结构；section_name、board_name — 讨论区名与版面名。
+        出参：版面 dict（id, name, url 等）或 None。
+    - update_board_posts(browser, base_url, section_name, board, output_root, max_pages=2, concurrency=32) -> list[str]
+        入参：browser — GlobalBrowser；base_url — BBS 根 URL；section_name — 讨论区名；board — 版面信息 dict；
+              output_root — 输出根目录；max_pages — 爬取页数；concurrency — 并发数。
+        出参：已保存的文件路径列表。
 """
 import asyncio
 import json

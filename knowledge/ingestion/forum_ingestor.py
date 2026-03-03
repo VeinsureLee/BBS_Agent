@@ -1,5 +1,18 @@
 """
-讨论区（forum/section）异步爬取：从「全部讨论区」或各 section 页获取讨论区列表。
+讨论区（forum/section）异步爬取模块：从 BBS 获取讨论区列表。
+
+功能说明：
+    - 从「全部讨论区」下拉的 ul.x-child HTML 中解析讨论区列表；
+    - 异步爬取讨论区列表：优先点击「全部讨论区」解析 ul.x-child，失败则按 section 下标
+      依次打开 #!section/i 取名称。
+
+主要接口入参/出参：
+    - parse_section_list_from_html(html: str)
+        入参：html — 包含 ul.x-child 的 HTML 或完整页面。
+        出参：list[dict]，每项 {"id", "name", "href"}，url 需调用方用 base_url 拼接。
+    - crawl_section_list(browser, base_url: str, section_count: int = SECTION_COUNT)
+        入参：browser — GlobalBrowser 实例；base_url — BBS 根 URL；section_count — 讨论区个数。
+        出参：list[dict]，每项 {"id", "name", "href", "url"}。
 """
 import re
 from bs4 import BeautifulSoup

@@ -7,7 +7,7 @@
     "crawl_concurrency": 4,
     "board_pinned_concurrency": 32,
     "board_article_concurrency": 64,
-    "tag_max_workers": 1,
+    "tag_max_workers": 16,
     "static_vector_max_workers": 4,
     "usr_vector_max_workers": 4
 }

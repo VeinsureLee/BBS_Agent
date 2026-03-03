@@ -1,5 +1,22 @@
 """
-动态帖子向量库检索与混合检索封装：封装对 dynamic_store 的查询，并提供检索测试。
+动态帖子向量库检索封装：封装对 dynamic_store 的相似度查询与检索器获取。
+
+功能说明：
+    - 提供对 dynamic_store（论坛动态帖子向量库）的检索入口；
+    - 支持相似度检索（含/不含分数）、以及通过 Retriever 获取相关文档；
+    - 供 Agent 或外部模块调用，用于「帖子内容」相关的 RAG 检索。
+    本模块 __main__ 可用于测试：写入指定路径帖子到向量库后执行查询并打印结果。
+
+主要接口入参/出参：
+    - get_dynamic_retriever_instance() / get_dynamic_vector_store_instance()
+        入参：无。出参：动态检索器或 Chroma 实例。
+    - dynamic_similarity_search(query: str, k: int | None, **kwargs) -> list[Document]
+        入参：query — 查询文本；k — 返回条数，None 时用 store 配置的 k；kwargs — 透传 Chroma（如 filter）。
+        出参：最相似的 k 条 Document 列表。
+    - dynamic_similarity_search_with_score(query, k, **kwargs) -> list[tuple[Document, float]]
+        入参：同上。出参：[(Document, score), ...]，score 为距离（越小越相似）。
+    - dynamic_get_relevant_documents(query: str) -> list[Document]
+        入参：query — 查询文本。出参：检索器返回的相关文档列表（使用 store 配置的 k）。
 """
 import sys
 import os
