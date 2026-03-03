@@ -1,6 +1,29 @@
 """
-论坛结构向量库检索：封装对 structure_store 的查询，包括按版面相似度等。
-支持「最佳匹配」聚合：版面内取与查询最相关的若干条计算得分，避免无关条目拉低相似度。
+论坛结构向量库检索：按版面信息/多维度检索最相似版面，支持聚合策略。
+
+功能说明：
+    - 封装对 structure_store（版面结构向量库）的查询；
+    - 支持单条版面信息检索（如「发言规则：允许匿名」）、多条信息综合排序；
+    - 支持按维度（field_name）检索与版面内聚合：avg（平均）、max（最佳匹配）、top_k_avg；
+    - 「最佳匹配」（max）可避免版面内无关条目拉低相似度。
+    本模块 __main__ 可测试单条/多条版面信息检索并打印排序结果。
+
+主要接口入参/出参：
+    - get_structure_retriever() / get_structure_vector_store()
+        入参：无。出参：结构检索器或 Chroma 实例。
+    - similarity_search(query, k=4, **kwargs) -> list[Document]
+        入参：query — 查询文本；k — 返回条数；kwargs — 透传 Chroma。
+        出参：Document 列表。
+    - query_boards_by_board_info(board_info, top_k=5, k_per_collection=500, vector_store=None, board_score_aggregation="max", ...) -> list[tuple]
+        入参：board_info — 版面描述（可带维度标签）；top_k — 返回版面数；k_per_collection — 内部检索上限；
+              vector_store — 可选；board_score_aggregation — avg|max|top_k_avg。
+        出参：[(hierarchy_path, board_name, similarity, docs), ...]，similarity 越大越相似。
+    - query_boards_by_multi_board_info(board_info_list, top_k, ..., multi_criterion_aggregation="avg") -> list[tuple]
+        入参：board_info_list — 多条版面描述；multi_criterion_aggregation — avg|min（多标准合并方式）。
+        出参：[(hierarchy_path, board_name, combined_similarity, per_criterion_scores), ...]。
+    - query_by_field_similarity(query_text, field_name, k_per_collection, ..., board_score_aggregation) -> list[tuple]
+        入参：query_text — 查询文本；field_name — 维度字段名；board_score_aggregation — 版面内聚合方式。
+        出参：[(hierarchy_path, similarity, docs), ...]。
 """
 import sys
 import os

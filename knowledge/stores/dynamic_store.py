@@ -1,7 +1,21 @@
 """
-论坛动态帖子（data/dynamic 下按讨论区/版面/日期存放的单帖 JSON）的向量库封装：
-从传入路径递归加载帖子 JSON（title, time, author, reply_count, url, floors），
-将每条帖子转为 Document 写入向量库，使用 MD5 去重。
+论坛动态帖子向量库封装：将 data/dynamic 下帖子 JSON 转为向量并写入 Chroma。
+
+功能说明：
+    - 从指定目录（默认 data/dynamic）递归加载帖子 JSON（title, time, author, reply_count, url, floors）；
+    - 将每条帖子合并为一条 Document（标题 + 各楼正文），附带 section、board、date、url 等 metadata；
+    - 使用 MD5 去重，已存在则跳过写入；
+    - 提供单例 VectorStoreService 及 get_dynamic_retriever / get_dynamic_vector_store 供检索使用。
+
+主要接口入参/出参：
+    - init_dynamic_store(folder_path: str | None, max_workers: int = 4) -> bool
+        入参：folder_path — 要扫描的目录，None 时使用 config 中 data_path；max_workers — 加载线程数。
+        出参：是否初始化/写入成功。
+    - get_dynamic_store(chroma_cfg: dict | None) -> VectorStoreService
+        入参：chroma_cfg — 可选，Chroma 配置，None 时从 config/vector_store/dynamic.json 加载。
+        出参：动态向量库服务实例（单例）。
+    - get_dynamic_vector_store(chroma_cfg) / get_dynamic_retriever(chroma_cfg)
+        入参：同上。出参：Chroma 实例或 LangChain Retriever，供 similarity_search、invoke 等使用。
 """
 import json
 import os

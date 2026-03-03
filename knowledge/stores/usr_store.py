@@ -1,5 +1,21 @@
 """
-用户上传数据的向量库封装：创建实例、按配置加载用户数据，成功后更新 config/init.json 中的 usr_vector_store_status。
+用户上传数据（记忆）向量库封装：创建实例并按配置加载用户数据到 Chroma。
+
+功能说明：
+    - 按 config/vector_store/store.json 创建用户向量库实例，从配置的 data_path 加载用户上传文档；
+    - 成功后更新 config/init.json 中 usr_vector_store_status 为 True；
+    - 提供单例及 get_usr_vector_store_vector_store / get_usr_vector_store_retriever 供检索使用。
+    模块加载时会读取 init.json，若已初始化则跳过，否则执行 init_usr_vector_store。
+
+主要接口入参/出参：
+    - init_usr_vector_store(folder_path: str | None, max_workers: int = 4) -> bool
+        入参：folder_path — 要扫描的数据目录，None 时使用 store.json 的 data_path；max_workers — 加载线程数。
+        出参：是否初始化成功；成功时更新 init.json 的 usr_vector_store_status。
+    - get_usr_vector_store(chroma_cfg: dict | None) -> VectorStoreService
+        入参：chroma_cfg — 可选，None 时从 config/vector_store/store.json 加载。
+        出参：用户向量库服务实例（单例）。
+    - get_usr_vector_store_vector_store(chroma_cfg) / get_usr_vector_store_retriever(chroma_cfg)
+        入参：同上。出参：Chroma 实例或 Retriever。
 """
 import json
 import os

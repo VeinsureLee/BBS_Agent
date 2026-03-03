@@ -1,7 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-清理 data/dynamic 下指定版面的帖子 JSON，将每层 content 按发信人、信区、标题、发信站、正文、来源等分块。
-修改后的数据写回原文件路径。
+动态帖子 JSON 内容清理：将楼层 content 按邮件头格式分块并写回原文件。
+
+功能说明：
+    - 解析北邮人论坛楼层 content 的邮件头格式（发信人、信区、标题、发信站、正文、来源等）；
+    - 将每层 content 从单一字符串转为分块 dict（发信人、信区、标题、发信站、正文、来源）；
+    - 支持按版面或「分类/版面」路径收集 data/dynamic 下所有帖子 JSON，清理后写回原路径。
+
+主要接口入参/出参：
+    - parse_content_blocks(content: str) -> dict[str, str]
+        入参：content — 楼层原始文本（可能含发信人、信区、标题、发信站、--、※ 来源 等）。
+        出参：{"发信人","信区","标题","发信站","正文","来源"} 等键的字典，未匹配到的键为空字符串。
+    - clean_floor_content(floor: dict) -> None
+        入参：floor — 单层楼 dict，若 "content" 为 str 则原地替换为 parse_content_blocks 结果。
+        出参：无（原地修改）。
+    - get_board_json_paths(data_root: Path, board: str) -> list[Path]
+        入参：data_root — data/dynamic 根路径；board — 版面名（如 "创意生活"）或 "分类/版面"。
+        出参：该版面下所有 .json 文件的 Path 列表。
+    - clean_board(board: str, data_root: str | Path = "data/dynamic") -> int
+        入参：board — 版面名或 "分类/版面"；data_root — 动态数据根目录。
+        出参：处理并写回的 JSON 文件数量。
 """
 
 import json

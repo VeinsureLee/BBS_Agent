@@ -1,5 +1,22 @@
 """
-用户上传数据（记忆/用户向量库）检索：封装对 usr_store 的查询。
+用户上传数据（记忆）向量库检索：封装对 usr_store 的相似度查询与检索器获取。
+
+功能说明：
+    - 提供对 usr_store（用户向量库）的检索入口；
+    - 支持相似度检索（含/不含分数）、以及通过 Retriever 获取相关文档；
+    - 供 Agent 或外部模块调用，用于用户上传/记忆类内容的 RAG 检索。
+    本模块 __main__ 可调试：对指定查询返回最接近的文档及距离。
+
+主要接口入参/出参：
+    - get_memory_retriever() / get_memory_vector_store()
+        入参：无。出参：用户向量库检索器或 Chroma 实例。
+    - similarity_search(query: str, k: int = 4, **kwargs) -> list[Document]
+        入参：query — 查询文本；k — 返回条数；kwargs — 透传 Chroma（如 filter）。
+        出参：最相似的 k 条 Document 列表。
+    - similarity_search_with_score(query, k=4, **kwargs) -> list[tuple[Document, float]]
+        入参：同上。出参：[(Document, score), ...]，score 为距离（越小越相似）。
+    - get_relevant_documents(query: str) -> list[Document]
+        入参：query — 查询文本。出参：检索器返回的相关文档列表（使用 store 配置的 k）。
 """
 import sys
 import os

@@ -1,5 +1,23 @@
 """
-入口：创建全局浏览器实例，登录，通过点击各 forum 在侧栏获取版面结构，爬取置顶并打开每帖保存为 介绍[index].json。
+knowledge.ingestion 命令行入口：BBS 讨论区与版面结构爬取及置顶帖介绍归档。
+
+功能说明：
+    - 创建全局浏览器实例并登录 BBS；
+    - 爬取「全部讨论区」或各 section 页获取讨论区列表；
+    - 对每个讨论区打开 #!section/id 页面，从主表格或侧栏解析版面与二级目录；
+    - 递归收集所有版面，爬取各版面置顶帖列表；
+    - 对每个置顶帖打开详情页，解析楼层内容并保存为 介绍[index].json；
+    - 讨论区与版面结构保存到 data/web_structure/forum_structure.json。
+
+入参：
+    - 无命令行参数；依赖环境与配置：
+      - .env：BBS_Name、BBS_Password（可选，用于登录）；
+      - config/*.json：BBS_Url 等 BBS 配置。
+
+出参：
+    - 无返回值；副作用：
+      - data/web_structure/forum_structure.json：讨论区与版面结构；
+      - data/web_structure/<讨论区>/<版面>/介绍0.json、介绍1.json ...：各版面置顶帖介绍 JSON。
 """
 import asyncio
 import json
