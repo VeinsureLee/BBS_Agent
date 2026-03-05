@@ -55,7 +55,7 @@ def load_report_prompts():
 
 
 def load_plan_prompts():
-    """加载规划阶段提示词（Plan-and-Solve 的 plan 阶段）。"""
+    """加载规划阶段提示词（Plan：根据用户输入生成任务列表）。"""
     try:
         plan_prompt_path = get_abs_path(prompts_conf["plan_prompt_path"])
     except KeyError as e:
@@ -65,6 +65,20 @@ def load_plan_prompts():
         return open(plan_prompt_path, "r", encoding="utf-8").read()
     except Exception as e:
         logger.error(f"[load_plan_prompts]解析规划提示词出错，{str(e)}")
+        raise e
+
+
+def load_replan_prompts():
+    """加载重新规划提示词（Replan：根据执行状态与受阻原因生成后续任务）。"""
+    try:
+        replan_prompt_path = get_abs_path(prompts_conf["replan_prompt_path"])
+    except KeyError as e:
+        logger.error(f"[load_replan_prompts]配置项中没有 replan_prompt_path")
+        raise e
+    try:
+        return open(replan_prompt_path, "r", encoding="utf-8").read()
+    except Exception as e:
+        logger.error(f"[load_replan_prompts]解析重新规划提示词出错，{str(e)}")
         raise e
 
 

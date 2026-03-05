@@ -96,7 +96,7 @@ if __name__ == "__main__":
     from agent.agent_plan import run_plan
 
     user_input = "帮我整理 BBS 各版面的标签，并生成一份汇总报告"
-    tasks = run_plan(user_input)
+    tasks, _ = run_plan(user_input)
     if not tasks:
         tasks = [
             {"id": "1", "description": "获取所有版面列表"},

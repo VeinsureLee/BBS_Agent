@@ -4,5 +4,6 @@
     "rag_summarize_prompt_path":"prompts/rag_summarize.txt",
     "report_prompt_path":"prompts/report_prompt.txt",
     "prompt_generate_path":"prompts/prompt_generate.txt",
-    "plan_prompt_path":"prompts/plan_prompt.txt"
+    "plan_prompt_path":"prompts/plan_prompt.txt",
+    "replan_prompt_path":"prompts/replan_prompt.txt"
 }
