@@ -108,10 +108,13 @@ def _board_json_to_documents(file_path: str, data: dict) -> list[Document]:
     board_field_keys = get_board_field_keys()
     field_label_map = get_field_label_map()
     docs: list[Document] = []
+    profile_parts: list[str] = []
+
     for field in board_field_keys:
         value = data.get(field)
         if value is None:
             continue
+        field_label = field_label_map.get(field, field)
         if isinstance(value, str):
             content = value.strip()
             if not content:
@@ -119,17 +122,24 @@ def _board_json_to_documents(file_path: str, data: dict) -> list[Document]:
             page_content = content
             meta = {**base_meta, "field_name": field}
             docs.append(Document(page_content=page_content, metadata=meta))
+            profile_parts.append(f"{field_label}：{content}")
         elif isinstance(value, list):
             for idx, item in enumerate(value):
                 content = str(item).strip() if item else ""
                 if not content:
                     continue
-                field_label = field_label_map.get(field, field)
                 page_content = f"{field_label}：\n{content}"
                 meta = {**base_meta, "field_name": field, "rule_index": idx}
                 docs.append(Document(page_content=page_content, metadata=meta))
+                profile_parts.append(f"{field_label}：{content}")
         else:
             continue
+
+    # 每个版面增加一条「内容维度摘要」文档，便于按用户问题做全文相似度检索（不依赖显式关键词映射）
+    if profile_parts:
+        profile_content = "\n".join(profile_parts)
+        profile_meta = {**base_meta, "field_name": "_profile", "doc_type": "content_dimension"}
+        docs.append(Document(page_content=profile_content, metadata=profile_meta))
 
     return docs
 

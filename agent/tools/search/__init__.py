@@ -16,6 +16,7 @@ from .clean import (
 from .search import (
     crawl_clean_and_vectorize,
     run_crawl_clean_and_vectorize,
+    crawl_board_recent_posts,
 )
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "clean_post_files",
     "crawl_clean_and_vectorize",
     "run_crawl_clean_and_vectorize",
+    "crawl_board_recent_posts",
 ]

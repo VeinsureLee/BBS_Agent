@@ -82,6 +82,33 @@ def get_relevant_documents(query: str) -> list[Document]:
     return retriever.invoke(query)
 
 
+def query_boards_by_question(
+    user_question: str,
+    top_k: int = 10,
+    k_per_collection: int = 1000,
+    vector_store=None,
+    board_score_aggregation: Literal["avg", "max", "top_k_avg"] = "max",
+    top_k_for_avg: int = 3,
+) -> list[tuple[str, str, float, list]]:
+    """
+    根据用户问题内容与版面各维度（简介、发言规则、版面定位等）的相似度检索最相关版面。
+    不做显式关键词到版面的映射，仅依赖向量库中版面内容维度文档与问题的语义相似度。
+    每个版面的「内容维度摘要」文档（_profile）与各字段文档共同参与检索与版面聚合。
+    :param user_question: 用户原始问题（如「abc老师怎么样」）
+    :param top_k: 返回的版面数量
+    :param k_per_collection: 内部检索文档数上限，适当增大可提高召回
+    :return: [(hierarchy_path, board_name, similarity, docs), ...]
+    """
+    return query_boards_by_board_info(
+        board_info=(user_question or "").strip(),
+        top_k=top_k,
+        k_per_collection=k_per_collection,
+        vector_store=vector_store,
+        board_score_aggregation=board_score_aggregation,
+        top_k_for_avg=top_k_for_avg,
+    )
+
+
 def _parse_board_info_to_field_and_query(board_info: str) -> tuple[str | None, str]:
     """
     从「版面信息」中解析出可选维度字段与查询文本。

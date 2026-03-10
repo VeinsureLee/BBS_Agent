@@ -44,11 +44,12 @@ class Planner:
         self._plan_template = load_plan_prompts()
         self._replan_template = load_replan_prompts()
 
-    # 可选三步：API 根据用户问题判断需要执行哪些
+    # 可选四步：API 根据用户问题判断需要执行哪些
     POSSIBLE_TASKS = [
         {"id": "1", "description": "调用已有用户上传数据"},
         {"id": "2", "description": "获取版面结构信息"},
         {"id": "3", "description": "获取版面帖子"},
+        {"id": "4", "description": "在历史帖子不满足问题时，爬取指定版面的最近帖子"},
     ]
 
     def plan(self, user_input: str) -> list[dict]:

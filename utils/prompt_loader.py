@@ -40,20 +40,6 @@ def load_rag_prompts():
         raise e
 
 
-def load_report_prompts():
-    try:
-        report_prompt_path = get_abs_path(prompts_conf["report_prompt_path"])
-    except KeyError as e:
-        logger.error(f"[load_report_prompts]在yaml配置项中没有report_prompt_path配置项")
-        raise e
-
-    try:
-        return open(report_prompt_path, "r", encoding="utf-8").read()
-    except Exception as e:
-        logger.error(f"[load_report_prompts]解析报告生成提示词出错，{str(e)}")
-        raise e
-
-
 def load_plan_prompts():
     """加载规划阶段提示词（Plan：根据用户输入生成任务列表）。"""
     try:
@@ -82,6 +68,23 @@ def load_replan_prompts():
         raise e
 
 
+def load_answer_sufficiency_prompt():
+    """加载回答充分性判断提示词（用于轮次结束后判断当前结果是否足以回答用户问题）。"""
+    try:
+        path = get_abs_path(prompts_conf.get("answer_sufficiency_prompt_path", "prompts/answer_sufficiency_prompt.txt"))
+    except Exception:
+        path = get_abs_path("prompts/answer_sufficiency_prompt.txt")
+    try:
+        return open(path, "r", encoding="utf-8").read()
+    except Exception as e:
+        logger.warning("[load_answer_sufficiency_prompt] 加载失败，使用内联默认: %s", e)
+        return (
+            "用户问题：{user_input}\n当前已收集信息摘要：{collected_summary}\n\n"
+            "请判断这些信息是否足以回答用户问题。若信息与问题无关或过少，判为不充分。\n"
+            "仅输出 JSON：{{\"sufficient\": true或false, \"reason\": \"原因\"}}"
+        )
+
+
 def load_prompt_generate():
     """加载版面说明生成用提示词模板（prompts/prompt_generate.txt），并从 config/data/data_dimension.json 填入维度说明与 JSON  schema。"""
     try:
@@ -104,8 +107,6 @@ if __name__ == '__main__':
     print(load_system_prompts())
     print("="*20)
     print(load_rag_prompts())
-    print("="*20)
-    print(load_report_prompts())
     print("="*20)
     print(load_prompt_generate())
     print("="*20)

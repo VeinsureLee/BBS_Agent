@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
 
 from knowledge.retrieval.structure_retriever import (
     query_boards_by_board_info,
+    query_boards_by_question,
     get_relevant_documents,
 )
 
@@ -23,9 +24,10 @@ def query_structure_boards(
     include_docs: bool = False,
 ) -> list[dict]:
     """
-    根据 query（版面描述或关键词）检索网站结构，返回最匹配的版面列表。
+    根据 query 检索网站结构，返回最匹配的版面列表。
+    当 query 为用户问题原文时，系统按问题内容与版面各维度（简介、发言规则、版面定位等）的相似度匹配，不做显式关键词到版面的映射。
 
-    :param query: 查询文本，如「发言规则：允许匿名」或「交流讨论」。
+    :param query: 查询文本（可为用户问题原文或版面描述）。
     :param top_k: 返回的版面数量。
     :param include_docs: 是否在结果中包含该版面下的检索文档列表（用于 RAG 等）。
     :return: 列表，每项含 hierarchy_path、board_name、similarity、可选 docs。
@@ -33,7 +35,7 @@ def query_structure_boards(
     ranked = query_boards_by_board_info(
         board_info=query,
         top_k=top_k,
-        k_per_collection=500,
+        k_per_collection=1000,
         board_score_aggregation="max",
     )
     result: list[dict] = []
@@ -98,3 +100,33 @@ if __name__ == "__main__":
     print(f"  仅路径: {paths}")
     docs = query_structure_documents("交流讨论", k=2)
     print(f"  query_structure_documents('交流讨论', k=2): {len(docs)} 条")
+
+
+def query_structure_boards_by_question(
+    user_question: str,
+    top_k: int = 10,
+    include_docs: bool = False,
+) -> list[dict]:
+    """
+    根据用户问题内容与版面内容维度的相似度检索最相关版面（渐进式披露：不展示问题与版面的显式映射）。
+    """
+    ranked = query_boards_by_question(
+        user_question=user_question.strip(),
+        top_k=top_k,
+        k_per_collection=1000,
+        board_score_aggregation="max",
+    )
+    result: list[dict] = []
+    for hierarchy_path, board_name, similarity, docs in ranked:
+        item: dict = {
+            "hierarchy_path": hierarchy_path,
+            "board_name": board_name,
+            "similarity": float(similarity),
+        }
+        if include_docs and docs:
+            item["docs"] = [
+                {"content": d.page_content[:300] if d.page_content else "", "metadata": d.metadata or {}}
+                for d in docs[:5]
+            ]
+        result.append(item)
+    return result

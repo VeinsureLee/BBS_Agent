@@ -231,6 +231,80 @@ def run_crawl_clean_and_vectorize(
     )
 
 
+def crawl_board_recent_posts(
+    board_path: str,
+    max_pages: int = 1,
+    concurrency: int = 16,
+) -> dict:
+    """
+    Agent 用同步入口：按版面路径爬取最近帖子并清理、向量化。
+    :param board_path: 版面路径，如「生活时尚/悄悄话」（讨论区/版面名）
+    :param max_pages: 爬取页数（1=仅首页）
+    :param concurrency: 并发数
+    :return: {"success": bool, "saved_paths": list, "cleaned_count": int, "vector_store_ok": bool} 或 {"success": False, "error": str}
+    """
+    if not (board_path or "").strip():
+        return None  # 供 Pipeline 识别为失败
+    parts = [p.strip() for p in (board_path or "").replace("\\", "/").strip("/").split("/") if p.strip()]
+    if len(parts) < 2:
+        forum, board, sub_board = "", parts[0] if parts else "", None
+    else:
+        forum, board = parts[0], parts[-1]
+        sub_board = parts[1] if len(parts) > 2 else None
+
+    if not board:
+        return None
+
+    try:
+        from utils.config_handler import load_config
+        from utils.env_handler import load_env, get_bbs_credentials
+        from infrastructure.browser_manager.browser_manager import GlobalBrowser
+        from infrastructure.browser_manager.login import login
+
+        load_env()
+        bbs_cfg = load_config()
+        base_url = (bbs_cfg.get("BBS_Url") or "").strip().rstrip("/")
+        if not base_url:
+            return None
+
+        output_root = get_abs_path("data/dynamic")
+        structure_path = get_abs_path("data/web_structure/forum_structure.json")
+
+        async def _run() -> dict:
+            browser = GlobalBrowser(headless=True)
+            await browser.start()
+            try:
+                username, password = get_bbs_credentials()
+                if username and password:
+                    await login(browser, username, password)
+                result = await crawl_clean_and_vectorize(
+                    browser=browser,
+                    base_url=base_url,
+                    forum=forum,
+                    board=board,
+                    sub_board=sub_board,
+                    max_pages=max_pages,
+                    concurrency=concurrency,
+                    output_root=output_root,
+                    structure_path=structure_path,
+                    data_root=output_root,
+                    vector_store_workers=4,
+                )
+                return {
+                    "success": True,
+                    "saved_paths": result.get("saved_paths", []),
+                    "cleaned_count": result.get("cleaned_count", 0),
+                    "vector_store_ok": result.get("vector_store_ok", False),
+                }
+            finally:
+                await browser.close()
+
+        out = asyncio.run(_run())
+        return out
+    except Exception:
+        return None
+
+
 def run_crawl_clean_and_vectorize_batch(
     browser: Any,
     base_url: str,
