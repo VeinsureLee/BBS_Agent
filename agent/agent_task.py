@@ -93,6 +93,11 @@ def run_tasks(
                 "result": result_dict,
             })
 
+            # 版面表展开：若刚完成的是「获取版面结构」且下一项是「获取版面帖子」，则按 selected_boards 展开为逐个版面搜寻
+            if success and current_tasks:
+                _expand_board_tasks_if_needed(executed_results, current_tasks, get_context)
+                _cb("on_todo_updated", current_tasks)
+
             needs_replan = not success
             tool_name = result.get("tool_name", "") if isinstance(result, dict) else ""
             if needs_replan_fn and isinstance(result, dict):
@@ -108,12 +113,15 @@ def run_tasks(
                     executed_summary=executed_summary,
                     replan_reason=replan_reason,
                     planner=planner,
+                    current_tasks=current_tasks,
+                    get_context=get_context,
                 )
                 if new_tasks:
                     current_tasks = new_tasks
                     replan_count += 1
                     _cb("on_replan", new_tasks)
-                    logger.info("[TaskAgent] 触发 Replan，获得 %s 项新任务", len(new_tasks))
+                    _cb("on_todo_updated", current_tasks)
+                    logger.info("[TaskAgent] 触发 Replan，更新 table，共 %s 项", len(new_tasks))
                 else:
                     logger.warning("[TaskAgent] Replan 未返回新任务，停止执行")
                     break
@@ -140,6 +148,8 @@ def run_tasks(
             executed_summary=executed_summary,
             replan_reason=reason or "当前结果不足以回答用户问题，建议扩大搜索或爬取更多版面",
             planner=planner,
+            current_tasks=current_tasks,
+            get_context=get_context,
         )
         if not new_tasks:
             logger.warning("[TaskAgent] 回答不充分但 Replan 未返回新任务，停止执行")
@@ -147,9 +157,59 @@ def run_tasks(
         current_tasks = new_tasks
         replan_count += 1
         _cb("on_replan", new_tasks)
-        logger.info("[TaskAgent] 回答不充分，触发 Replan 获得 %s 项新任务", len(new_tasks))
+        _cb("on_todo_updated", current_tasks)
+        logger.info("[TaskAgent] 回答不充分，触发 Replan 更新 table，共 %s 项", len(new_tasks))
 
     return executed_results, current_tasks
+
+
+def _is_board_structure_task(task: dict) -> bool:
+    """是否为「获取版面结构」类任务。"""
+    tid = task.get("id", "")
+    desc = (task.get("description") or "").strip()
+    return tid == "2" or "版面结构" in desc
+
+
+def _is_board_post_task(task: dict) -> bool:
+    """是否为「获取版面帖子」类任务（未指定具体版面，将由系统按版面表展开）。"""
+    tid = task.get("id", "")
+    desc = (task.get("description") or "").strip()
+    return (tid == "3" or "版面帖子" in desc) and not task.get("board_path")
+
+
+def _expand_board_tasks_if_needed(
+    executed_results: list,
+    current_tasks: list,
+    get_context: Callable[[], dict],
+) -> None:
+    """
+    若上一任务为「获取版面结构」且下一任务为「获取版面帖子」，则用 context.selected_boards
+    将下一任务展开为「按版面逐个搜寻」的多个任务（每个任务带 board_path）。
+    """
+    if not current_tasks or not executed_results:
+        return
+    last_record = executed_results[-1]
+    if not last_record.get("success"):
+        return
+    last_task = last_record.get("task") or {}
+    if not _is_board_structure_task(last_task):
+        return
+    next_task = current_tasks[0]
+    if not _is_board_post_task(next_task):
+        return
+    context = get_context()
+    boards = context.get("selected_boards") or []
+    if not boards:
+        return
+    current_tasks.pop(0)
+    for i, board_path in enumerate(boards):
+        path_str = board_path if isinstance(board_path, str) else str(board_path)
+        current_tasks.insert(i, {
+            "id": f"3-{i + 1}",
+            "description": f"在版面（{path_str}）中搜寻与问题相关的帖子",
+            "board_path": path_str,
+        })
+    logger.info("[TaskAgent] 按版面表展开为 %s 个搜寻任务", len(boards))
 
 
 def _arity(fn: Callable) -> int:

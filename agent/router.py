@@ -52,16 +52,23 @@ class Router:
 
         logger.info(f"开始路由决策 - 任务ID: {task_id}, 描述: {task_description}")
 
-        # 基于任务ID的直接路由
+        # 基于任务ID的直接路由（含按版面展开的任务 3-1, 3-2, ...）
         id_routing = {
             "1": "query_user_data",
             "2": "query_structure_data",
             "3": "query_post_data",
             "4": "crawl_board_recent_posts",
         }
-
         if task_id in id_routing:
             selected_tool = id_routing[task_id]
+        elif task_id and task_id.startswith("3-"):
+            selected_tool = "query_post_data"
+        elif task_id and task_id.startswith("4-"):
+            selected_tool = "crawl_board_recent_posts"
+        else:
+            selected_tool = None
+
+        if selected_tool is not None:
             logger.info(f"基于任务ID路由到工具: {selected_tool}")
             self.decision_history.append({
                 "task": task,

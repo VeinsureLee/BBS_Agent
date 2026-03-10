@@ -188,7 +188,10 @@ class Pipeline:
         tool_name = getattr(tool, "__name__", "unknown")
 
         if "user_data" in tool_name:
-            params.update({"k": 10, "include_content_preview": False})
+            # 用用户问题检索本地/用户上传数据，并带内容摘要供总结使用
+            user_input = (context.get("user_input") or "").strip()
+            params["query"] = user_input or description
+            params.update({"k": 10, "include_content_preview": True})
         elif "post_data" in tool_name:
             params.update({"k": 10, "include_content_preview": False})
             if board_path:

@@ -23,6 +23,7 @@ from agent.agent_task import run_tasks
 from infrastructure.model_factory.factory import chat_model
 from utils.prompt_loader import load_answer_sufficiency_prompt
 from utils.logger_handler import logger
+from agent.tools.summarize import rag_summarize
 
 
 def _invoke_cb(callbacks: Optional[Dict[str, Callable]], name: str, *args, **kwargs) -> None:
@@ -91,10 +92,15 @@ class Agent:
 
         get_context = lambda: self.memory.get_context(conversation_id)
         execute_task_fn = lambda task, ctx: self._execute_one_task(task, ctx, conversation_id)
+
+        def _on_todo_updated(updated_tasks):
+            self.memory.update_todo_table(conversation_id, updated_tasks or [])
+
         task_callbacks = {
             "on_task_start": (callbacks or {}).get("on_task_start"),
             "on_task_done": (callbacks or {}).get("on_task_done"),
             "on_replan": (callbacks or {}).get("on_replan"),
+            "on_todo_updated": _on_todo_updated,
         }
         executed_results, _remaining = run_tasks(
             user_input=user_input,
@@ -355,14 +361,68 @@ class Agent:
             return "暂未检索到可用的具体内容。"
         return "\n".join(parts)
 
+    def _build_rag_context(self, completed_tasks: list) -> str:
+        """从已完成任务中拼出供 RAG 总结使用的参考资料全文；本地文件优先，其次版面/帖子。"""
+        lines = []
+        for item in completed_tasks:
+            result = item.get("result")
+            if not result or result.get("status") != "success":
+                continue
+            raw = result.get("result")
+            if not isinstance(raw, list):
+                if isinstance(raw, str) and raw:
+                    lines.append(raw[:500])
+                continue
+            for it in raw:
+                if not isinstance(it, dict):
+                    continue
+                # 本地文件（用户上传/用户数据）：有 file 且无 hierarchy_path，优先纳入并带内容摘要
+                file_path = it.get("file", "")
+                content_preview = (it.get("content_preview") or "").strip()
+                hierarchy_path = it.get("hierarchy_path") or it.get("board_path") or ""
+                if file_path and not hierarchy_path:
+                    line = f"本地文件：{file_path}"
+                    if content_preview:
+                        line += f"；内容摘要：{content_preview}"
+                    lines.append(line)
+                    continue
+                # 版面/帖子信息
+                board_name = it.get("board_name", "") or hierarchy_path
+                url = it.get("url", "")
+                title = it.get("title", "")
+                post_preview = (it.get("content_preview") or "")[:200]
+                agree_count = it.get("agree_count", it.get("likes", ""))
+                reply_count = it.get("reply_count", it.get("replies", ""))
+                parts = []
+                if board_name or hierarchy_path:
+                    parts.append(f"版面：{board_name}" + (f"，路径/从属：{hierarchy_path}" if hierarchy_path else ""))
+                if title:
+                    parts.append(f"标题：{title}")
+                if url:
+                    parts.append(f"链接：{url}")
+                if post_preview:
+                    parts.append(f"内容摘要：{post_preview}")
+                if agree_count not in (None, ""):
+                    parts.append(f"赞同/点赞：{agree_count}")
+                if reply_count not in (None, ""):
+                    parts.append(f"回复数：{reply_count}")
+                if parts:
+                    lines.append("；".join(parts))
+        return "\n".join(lines) if lines else "无"
+
     def _generate_final_response(self, user_input: str, completed_tasks: list) -> str:
-        """根据已完成任务生成最终响应：回答摘要 + 参考来源（版面地址/文件地址等，带说明）。"""
+        """根据已完成任务生成最终响应：使用 RAG 总结模块生成层级化、口语化回答，并附参考来源。"""
         successful = [it for it in completed_tasks if (it.get("result") or {}).get("status") == "success"]
         if not successful:
             return f"很抱歉，我无法完成您的请求「{user_input}」。请尝试重新描述您的问题。"
-        answer_summary = self._build_answer_summary(user_input, completed_tasks)
+        context = self._build_rag_context(completed_tasks)
+        try:
+            answer_summary = rag_summarize(user_input, context)
+        except Exception as e:
+            logger.warning("[Agent] RAG 总结失败，回退为简单摘要: %s", e)
+            answer_summary = self._build_answer_summary(user_input, completed_tasks)
         references = self._collect_references(completed_tasks)
-        response = f"我已经完成了您的请求「{user_input}」。\n\n【回答】\n{answer_summary}"
+        response = f"根据你的问题「{user_input}」，我已经查过相关版面与帖子，结论如下。\n\n【回答】\n{answer_summary}"
         if references:
             response += f"\n\n【参考来源】\n" + "\n".join(references)
         return response

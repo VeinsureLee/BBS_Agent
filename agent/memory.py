@@ -34,6 +34,7 @@ class Memory:
             "last_updated": datetime.now().isoformat(),
             "user_input": user_input,
             "tasks": [],
+            "todo_table": [],
             "results": {},
             "context": {
                 "current_step": 0,
@@ -61,16 +62,32 @@ class Memory:
         return conversation_id
 
     def store_tasks(self, conversation_id: str, tasks: List[Dict]):
-        """存储规划的任务"""
+        """存储规划的任务，并同步更新 to-do table"""
         if conversation_id in self.conversations:
             self.conversations[conversation_id]["tasks"] = tasks
+            self.conversations[conversation_id]["todo_table"] = list(tasks)
             self.conversations[conversation_id]["metadata"]["task_count"] = len(tasks)
             self.conversations[conversation_id]["last_updated"] = datetime.now().isoformat()
 
-            logger.info(f"存储 {len(tasks)} 个任务到对话 {conversation_id}")
+            logger.info(f"存储 {len(tasks)} 个任务到对话 {conversation_id}，并更新 todo_table")
 
             if self.persistence_enabled:
                 self._save_persistence()
+
+    def update_todo_table(self, conversation_id: str, todo_table: List[Dict]):
+        """显式更新 to-do table（replan 或展开版面后调用）"""
+        if conversation_id in self.conversations:
+            self.conversations[conversation_id]["todo_table"] = list(todo_table)
+            self.conversations[conversation_id]["last_updated"] = datetime.now().isoformat()
+            logger.info(f"更新对话 {conversation_id} 的 todo_table，共 {len(todo_table)} 项")
+            if self.persistence_enabled:
+                self._save_persistence()
+
+    def get_todo_table(self, conversation_id: str) -> List[Dict]:
+        """获取当前 to-do table 副本"""
+        if conversation_id not in self.conversations:
+            return []
+        return list(self.conversations[conversation_id].get("todo_table", []))
 
     def update_task_result(
         self,
