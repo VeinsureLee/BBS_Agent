@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { loadBbsConfig, getAbsPath } from "./config.js";
 import { GlobalBrowserTs } from "./browserManager.js";
 import { login } from "./login.js";
+import { tsLogger } from "./logger.js";
 
 function env(name: string): string {
   return (process.env[name] ?? "").trim();
@@ -15,7 +16,7 @@ async function main(): Promise<void> {
   const bbsConfig = await loadBbsConfig();
   const homeUrl = String(bbsConfig.BBS_Url ?? "").trim().replace(/\/+$/, "");
   if (!homeUrl) {
-    console.error("BBS_Url is missing in config/websites/bbs.json");
+    tsLogger.error("main", "BBS_Url is missing in config/websites/bbs.json");
     return;
   }
 
@@ -27,7 +28,7 @@ async function main(): Promise<void> {
     if (username && password) {
       await login(browser, username, password);
     } else {
-      console.warn("BBS_Name/BBS_Password not set in .env, skip login");
+      tsLogger.warn("main", "BBS_Name/BBS_Password not set in .env, skip login");
     }
 
     const forumHome = `${homeUrl}/#!board/BUPTDNF`;
@@ -36,13 +37,13 @@ async function main(): Promise<void> {
     const outPath = getAbsPath("data/test/test_ts.html");
     await fs.mkdir(path.dirname(outPath), { recursive: true });
     await fs.writeFile(outPath, html, "utf-8");
-    console.info(`[browser_manager_ts] page saved: ${outPath}`);
+    tsLogger.info("main", `[browser_manager_ts] page saved: ${outPath}`);
   } finally {
     await browser.close();
   }
 }
 
 main().catch((error) => {
-  console.error("[browser_manager_ts] unexpected error:", error);
+  tsLogger.error("main", "[browser_manager_ts] unexpected error", error);
   process.exitCode = 1;
 });

@@ -9,9 +9,10 @@ from utils.path_tool import get_abs_path
 
 # 日志保存的根目录
 LOG_ROOT = get_abs_path("logs")
+PYTHON_LOG_ROOT = os.path.join(LOG_ROOT, "python")
 
 # 确保日志的目录存在
-os.makedirs(LOG_ROOT, exist_ok=True)
+os.makedirs(PYTHON_LOG_ROOT, exist_ok=True)
 
 # 日志的格式配置  error info debug
 DEFAULT_LOG_FORMAT = logging.Formatter(
@@ -19,14 +20,24 @@ DEFAULT_LOG_FORMAT = logging.Formatter(
 )
 
 
+def get_log_file_path(name: str, category: str = "python") -> str:
+    """
+    统一生成日志路径：logs/<category>/<logger_name>/<logger_name>_YYYYMMDD.log
+    """
+    base_dir = os.path.join(LOG_ROOT, category, name)
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, f"{name}_{datetime.now().strftime('%Y%m%d')}.log")
+
+
 def get_logger(
         name: str = "agent",
         console_level: int = logging.INFO,
         file_level: int = logging.DEBUG,
-        log_file = None,
+        log_file: str | None = None,
 ) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
     # 避免重复添加Handler
     if logger.handlers:
@@ -40,8 +51,12 @@ def get_logger(
     logger.addHandler(console_handler)
 
     # 文件Handler
-    if not log_file:        # 日志文件的存放路径
-        log_file = os.path.join(LOG_ROOT, f"{name}_{datetime.now().strftime('%Y%m%d')}.log")
+    if not log_file:
+        log_file = get_log_file_path(name, category="python")
+    elif not os.path.isabs(log_file):
+        log_file = get_abs_path(log_file)
+
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setLevel(file_level)

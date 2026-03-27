@@ -5,6 +5,7 @@ import {
   type Page,
 } from "playwright";
 import { loadDriverConfig } from "./config.js";
+import { tsLogger } from "./logger.js";
 
 type ProxyConfig = {
   server: string;
@@ -52,7 +53,7 @@ export class GlobalBrowserTs {
     if (this.startingPromise) return this.startingPromise;
 
     this.startingPromise = (async () => {
-      console.info("[browser_manager_ts] starting browser");
+      tsLogger.info("browser_manager_ts", "[browser_manager_ts] starting browser");
       const driverConfig = await loadDriverConfig();
       const chromePath = String(driverConfig.Chrome_Path ?? "").trim();
 
@@ -73,7 +74,7 @@ export class GlobalBrowserTs {
       if (this.userAgent) contextOptions.userAgent = this.userAgent;
       if (this.storageState) contextOptions.storageState = this.storageState;
       this.context = await this.browser.newContext(contextOptions);
-      console.info("[browser_manager_ts] browser started");
+      tsLogger.info("browser_manager_ts", "[browser_manager_ts] browser started");
     })();
 
     try {
@@ -89,7 +90,7 @@ export class GlobalBrowserTs {
 
     this.context = null;
     this.browser = null;
-    console.info("[browser_manager_ts] browser closed");
+    tsLogger.info("browser_manager_ts", "[browser_manager_ts] browser closed");
   }
 
   async newPage(

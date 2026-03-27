@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "tsx main.ts",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "forum-init": "tsx forum-init.ts",
+    "board-init": "tsx board-init.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
