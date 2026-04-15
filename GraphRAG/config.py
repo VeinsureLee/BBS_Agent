@@ -7,22 +7,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VECTOR_DB_PATH = os.path.join(BASE_DIR, "chroma_db")
 
 # 数据文件路径
-DATA_PATH = r"D:/11personal information/毕设/code/weibo_data.txt"
+DATA_PATH = r""
 
 # Neo4j配置
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "lyz_neo4j"
+NEO4J_PASSWORD = " "#neo4j端密码
 
 # LLM配置（可切换 DeepSeek）
-OPENAI_API_KEY = "ak_2EG0aE6SW6fM1xp1rL2vV6WP2Fg43"
+OPENAI_API_KEY = "XXX"
 OPENAI_BASE_URL = "https://api.longcat.chat/openai"
 OPENAI_MODEL = "LongCat-Flash-Lite"
 
 #DeepSeek
 # OPENAI_BASE_URL = "https://api.deepseek.com"
 # OPENAI_MODEL = "deepseek-chat"
-# OPENAI_API_KEY = "sk-eb1805b91b034f3bb56411eee66b7eb1"
+# OPENAI_API_KEY = "XXX"
 
 #向量嵌入模型
 EMBEDDING_MODEL = "BAAI/bge-base-zh"
